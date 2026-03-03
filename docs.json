@@ -70,6 +70,7 @@
             "pages": [
               "cli/overview",
               "cli/agent-commands",
+              "cli/persona-commands",
               "cli/workflow-commands",
               "cli/mcp-commands",
               "cli/config-commands",

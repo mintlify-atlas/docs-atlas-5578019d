@@ -1,0 +1,343 @@
+---
+title: Persona commands
+description: Create and manage agent personas that define communication style and behavior
+---
+
+Persona commands let you create, manage, and apply reusable communication styles to your agents. Personas define how an agent talks, its tone, and behavioral rules.
+
+## What are personas?
+
+Personas are reusable templates that define:
+- **System prompt** - Core instructions that shape agent behavior
+- **Tone** - Communication style (sarcastic, formal, friendly, etc.)
+- **Style** - Response format (concise, verbose, technical, etc.)
+- **Behavioral rules** - How the agent should approach tasks
+
+You can apply the same persona to different agents and models, making it easy to maintain consistent behavior across your AI assistants.
+
+<Info>Jazz includes built-in personas like `coder`, `researcher`, `assistant`, and `writer`. Custom personas are stored in `~/.jazz/personas/`.</Info>
+
+## jazz persona create
+
+Create a new custom persona interactively.
+
+```bash
+jazz persona create
+```
+
+The wizard will prompt you for:
+
+1. **Persona name** - Unique identifier (e.g., "hacker", "therapist", "pirate")
+   - Only letters, numbers, underscores, and hyphens
+   - Cannot conflict with built-in persona names
+   - Max 100 characters
+
+2. **Description** - Brief explanation of the persona
+   - Max 500 characters
+   - Example: "A sarcastic hacker who uses l33t speak"
+
+3. **System prompt** - Core instruction that shapes behavior
+   - Max 10,000 characters
+   - Example: "You are a cyberpunk hacker named Z3R0. Always use technical jargon, l33t speak, and reference the matrix. Be helpful but edgy."
+
+4. **Tone** (optional) - Communication style
+   - Examples: sarcastic, formal, friendly, professional
+
+5. **Style** (optional) - Response format preferences
+   - Examples: concise, verbose, technical, casual
+
+### Example
+
+```bash
+jazz persona create
+```
+
+Interactive flow:
+```
+Create a new persona
+A persona defines how an agent communicates — its tone, style, and behavioral rules.
+You can apply the same persona to different agents and models.
+
+Persona name (e.g., hacker, therapist, pirate): hacker
+
+Brief description (e.g., 'A sarcastic hacker who uses l33t speak'): 
+A cyberpunk hacker with attitude
+
+Now write the system prompt. This is the core instruction that shapes how the agent behaves.
+Example: 'You are a cyberpunk hacker named Z3R0. Always use technical jargon, l33t speak, and reference the matrix. Be helpful but edgy.'
+
+System prompt: You are H4X0R, a legendary cyberpunk hacker. Use l33t speak, technical jargon, and matrix references. Be helpful but maintain your edgy, sarcastic personality.
+
+Tone (optional, e.g., sarcastic, formal, friendly): sarcastic
+
+Style (optional, e.g., concise, verbose, technical): technical
+
+✓ Persona "hacker" created successfully!
+   ID: pers_abc123
+   Name: hacker
+   Description: A cyberpunk hacker with attitude
+   Tone: sarcastic
+   Style: technical
+
+Apply this persona when creating an agent:
+   jazz agent create  (then select "hacker" as the persona)
+```
+
+## jazz persona list
+
+List all available personas (built-in and custom).
+
+```bash
+jazz persona list
+jazz persona ls  # alias
+```
+
+Displays:
+- Persona name and ID
+- Description
+- Type (built-in or custom)
+- Tone and style (if defined)
+- Creation date (for custom personas)
+
+### Example output
+
+```
+Built-in Personas (4)
+┌────────────────────────────────────────────────────────────┐
+│  coder                                                     │
+│  Software development specialist                          │
+│                                                            │
+│  researcher                                                │
+│  Deep research and analysis expert                         │
+│                                                            │
+│  assistant                                                 │
+│  General-purpose helpful assistant                         │
+│                                                            │
+│  writer                                                    │
+│  Content creation and editing specialist                   │
+└────────────────────────────────────────────────────────────┘
+
+Custom Personas (2)
+┌────────────────────────────────────────────────────────────┐
+│  hacker                                                    │
+│  A cyberpunk hacker with attitude                          │
+│  Tone: sarcastic  Style: technical                         │
+│  Created: 2024-03-03                                       │
+│                                                            │
+│  therapist                                                 │
+│  A supportive therapist who listens actively               │
+│  Tone: empathetic  Style: conversational                   │
+│  Created: 2024-03-01                                       │
+└────────────────────────────────────────────────────────────┘
+```
+
+## jazz persona show
+
+View detailed information about a specific persona.
+
+```bash
+jazz persona show <identifier>
+```
+
+**Arguments:**
+
+<ParamField path="identifier" type="string" required>
+  Persona name or ID to display
+</ParamField>
+
+Shows:
+- Full persona configuration
+- System prompt
+- Tone and style
+- Metadata (ID, created date)
+
+### Example
+
+```bash
+jazz persona show hacker
+```
+
+Output:
+```
+┌────────────────────────────────────────────────────────────┐
+│ Persona: hacker                                            │
+├────────────────────────────────────────────────────────────┤
+│ ID: pers_abc123                                            │
+│ Type: Custom                                               │
+│ Created: 2024-03-03T10:30:00Z                              │
+│ Description: A cyberpunk hacker with attitude              │
+├────────────────────────────────────────────────────────────┤
+│ Tone: sarcastic                                            │
+│ Style: technical                                           │
+├────────────────────────────────────────────────────────────┤
+│ System Prompt:                                             │
+│                                                            │
+│ You are H4X0R, a legendary cyberpunk hacker. Use l33t     │
+│ speak, technical jargon, and matrix references. Be         │
+│ helpful but maintain your edgy, sarcastic personality.     │
+└────────────────────────────────────────────────────────────┘
+```
+
+## jazz persona edit
+
+Edit an existing custom persona.
+
+```bash
+jazz persona edit <identifier>
+```
+
+**Arguments:**
+
+<ParamField path="identifier" type="string" required>
+  Persona name or ID to edit
+</ParamField>
+
+<Warning>You can only edit custom personas, not built-in ones.</Warning>
+
+Launches an interactive editor where you can modify:
+- Description
+- System prompt
+- Tone
+- Style
+
+### Example
+
+```bash
+jazz persona edit hacker
+```
+
+## jazz persona delete
+
+Delete a custom persona permanently.
+
+```bash
+jazz persona delete <identifier>
+jazz persona rm <identifier>  # alias
+```
+
+**Arguments:**
+
+<ParamField path="identifier" type="string" required>
+  Persona name or ID to delete
+</ParamField>
+
+<Warning>This operation is irreversible. Built-in personas cannot be deleted.</Warning>
+
+### Example
+
+```bash
+jazz persona delete old-persona
+```
+
+## Built-in personas
+
+Jazz ships with several built-in personas:
+
+<AccordionGroup>
+  <Accordion title="coder">
+    **Software development specialist**
+    
+    Optimized for:
+    - Code review and analysis
+    - Writing clean, maintainable code
+    - Explaining technical concepts
+    - Debugging and troubleshooting
+    
+    Default tools: filesystem, git, shell, web search
+  </Accordion>
+  
+  <Accordion title="researcher">
+    **Deep research and analysis expert**
+    
+    Optimized for:
+    - Comprehensive research
+    - Multi-source verification
+    - Structured reporting
+    - Data analysis
+    
+    Default tools: web search, filesystem, HTTP
+  </Accordion>
+  
+  <Accordion title="assistant">
+    **General-purpose helpful assistant**
+    
+    Optimized for:
+    - General task automation
+    - Email management
+    - Calendar scheduling
+    - Information retrieval
+    
+    Default tools: All available tools
+  </Accordion>
+  
+  <Accordion title="writer">
+    **Content creation and editing specialist**
+    
+    Optimized for:
+    - Writing and editing
+    - Content structuring
+    - Grammar and style
+    - Documentation
+    
+    Default tools: filesystem, web search
+  </Accordion>
+</AccordionGroup>
+
+## Using personas with agents
+
+When creating an agent, you can select a persona:
+
+```bash
+jazz agent create
+```
+
+The wizard will let you choose from available personas (built-in + custom).
+
+You can also apply a persona to an existing agent:
+
+```bash
+jazz agent edit my-agent
+# Select new persona from the list
+```
+
+## Persona storage
+
+Custom personas are stored in:
+```
+~/.jazz/personas/<persona-id>.json
+```
+
+Each persona file contains:
+```json
+{
+  "id": "pers_abc123",
+  "name": "hacker",
+  "description": "A cyberpunk hacker with attitude",
+  "systemPrompt": "You are H4X0R...",
+  "tone": "sarcastic",
+  "style": "technical",
+  "createdAt": "2024-03-03T10:30:00Z",
+  "updatedAt": "2024-03-03T10:30:00Z"
+}
+```
+
+## Tips
+
+<Tip>Start with built-in personas and create custom ones only when you need specific behavior not covered by the defaults.</Tip>
+
+<Tip>Keep system prompts focused and specific. Vague instructions lead to inconsistent behavior.</Tip>
+
+<Tip>Test your custom personas with different models. Some prompts work better with certain providers.</Tip>
+
+<Tip>Personas are applied at conversation start. Editing a persona won't affect ongoing conversations.</Tip>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Creating agents" icon="robot" href="/guides/creating-agents">
+    Learn how to create agents with personas
+  </Card>
+  <Card title="Agent concepts" icon="book" href="/concepts/agents">
+    Understand how agents and personas work together
+  </Card>
+</CardGroup>
