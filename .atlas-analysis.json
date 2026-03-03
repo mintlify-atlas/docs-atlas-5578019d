@@ -1,0 +1,151 @@
+{
+  "projectType": "cli-tool",
+  "projectName": "Jazz",
+  "projectDescription": "A powerful CLI that creates autonomous AI agents with real-world capabilities for task automation and workflow orchestration.",
+  "theme": "aspen",
+  "primaryColor": "#6366F1",
+  "lightColor": "#818CF8",
+  "darkColor": "#4F46E5",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/agents",
+              "concepts/skills",
+              "concepts/workflows",
+              "concepts/mcp"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/creating-agents",
+              "guides/using-skills",
+              "guides/workflows",
+              "guides/mcp-integration",
+              "guides/llm-providers",
+              "guides/configuration"
+            ]
+          },
+          {
+            "group": "Use Cases",
+            "pages": [
+              "use-cases/development",
+              "use-cases/email-automation",
+              "use-cases/research",
+              "use-cases/cicd"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "CLI Reference",
+        "groups": [
+          {
+            "group": "Commands",
+            "pages": [
+              "cli/overview",
+              "cli/agent-commands",
+              "cli/workflow-commands",
+              "cli/mcp-commands",
+              "cli/config-commands",
+              "cli/auth-commands"
+            ]
+          },
+          {
+            "group": "In-Chat Commands",
+            "pages": [
+              "cli/chat-commands"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Tools",
+            "pages": [
+              "api/tools/overview",
+              "api/tools/filesystem",
+              "api/tools/git",
+              "api/tools/shell",
+              "api/tools/web-search",
+              "api/tools/http",
+              "api/tools/mcp"
+            ]
+          },
+          {
+            "group": "Skills",
+            "pages": [
+              "api/skills/overview",
+              "api/skills/built-in",
+              "api/skills/creating-custom"
+            ]
+          },
+          {
+            "group": "Workflows",
+            "pages": [
+              "api/workflows/overview",
+              "api/workflows/structure",
+              "api/workflows/scheduling"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Autonomous AI agents with real-world capabilities",
+    "LLM provider agnostic (OpenAI, Anthropic, Google, Mistral, xAI, DeepSeek, Ollama, OpenRouter)",
+    "Model Context Protocol (MCP) integration",
+    "20+ built-in skills (.agents convention)",
+    "Workflow automation with cron scheduling",
+    "Built-in tools: Git, filesystem, shell, web search, HTTP, email",
+    "Auto-approve policies for workflow autonomy",
+    "CI/CD integration with raw output and auto-approve",
+    "Effect-TS architecture for reliability",
+    "Interactive CLI with in-chat slash commands"
+  ],
+  "publicApiSurface": [
+    "jazz - Start interactive agent",
+    "jazz agent create - Create new agent",
+    "jazz agent chat <name> - Chat with specific agent",
+    "jazz agent list - List all agents",
+    "jazz agent delete <name> - Delete an agent",
+    "jazz workflow list - List workflows",
+    "jazz workflow run <name> - Run workflow",
+    "jazz workflow schedule <name> - Schedule workflow",
+    "jazz workflow unschedule <name> - Unschedule workflow",
+    "jazz mcp add - Add MCP server",
+    "jazz mcp list - List MCP servers",
+    "jazz mcp remove <name> - Remove MCP server",
+    "jazz config show - View configuration",
+    "jazz config wizard - Run configuration wizard",
+    "jazz auth gmail login - Authenticate Gmail",
+    "jazz auth gmail logout - Logout Gmail",
+    "jazz update - Update to latest version",
+    "/tools - View available tools",
+    "/skills - Browse agent skills",
+    "/model - Change LLM model",
+    "/mode - Change agent mode",
+    "/cost - View token costs",
+    "/context - View context window",
+    "/compact - Enable compact mode",
+    "/switch - Switch agent",
+    "/workflows - View workflows",
+    "/help - Show help"
+  ]
+}
