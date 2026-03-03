@@ -1,0 +1,617 @@
+---
+title: Workflows
+description: Automate repetitive tasks with scheduled workflows that run autonomously with configurable approval policies
+---
+
+Workflows are scheduled automation—tasks your agents run periodically without your direct involvement. Think email cleanup every hour, daily tech digests, weekly code audits, or morning weather briefings. You describe what should happen, when it should run, and how much autonomy the agent gets.
+
+## What is a workflow?
+
+A workflow is a Markdown file containing:
+
+1. **Metadata** (YAML frontmatter) - Name, schedule, agent, auto-approve settings
+2. **Prompt** - What the agent should do
+
+Example:
+
+```markdown
+---
+name: email-cleanup
+description: Archive newsletters and organize inbox
+schedule: "0 * * * *"  # Every hour
+agent: my-assistant
+autoApprove: low-risk
+---
+
+Check my unread emails. Archive any newsletters or promotional emails.
+Flag anything that looks urgent or requires my attention.
+Summarize what you found and what actions you took.
+```
+
+Source: README.md:149-166, workflow.ts:30-27
+
+## Creating workflows
+
+<Steps>
+  <Step title="Create a workflow file">
+    Workflows can be global or project-local:
+
+    ```bash
+    # Global (available everywhere)
+    ~/.jazz/workflows/my-workflow/WORKFLOW.md
+
+    # Project-local (current directory only)
+    ./workflows/my-workflow/WORKFLOW.md
+    ```
+  </Step>
+
+  <Step title="Add frontmatter metadata">
+    Define the workflow configuration:
+
+    ```yaml
+    ---
+    name: daily-standup-prep
+    description: Prepare standup notes from git activity
+    schedule: "0 9 * * 1-5"  # 9 AM, Monday-Friday
+    agent: my-dev-agent
+    autoApprove: read-only
+    catchUpOnStartup: true
+    maxCatchUpAge: 86400  # 24 hours in seconds
+    ---
+    ```
+  </Step>
+
+  <Step title="Write the prompt">
+    Describe what the agent should do:
+
+    ```markdown
+    Check my git activity from yesterday across all repos in ~/projects/.
+    Summarize what I worked on, what PRs I opened or reviewed,
+    and any blockers I mentioned in commit messages.
+    Format it as bullet points I can paste into Slack.
+    ```
+  </Step>
+
+  <Step title="Test the workflow">
+    Run manually before scheduling:
+
+    ```bash
+    jazz workflow run daily-standup-prep
+    ```
+
+    Verify the output meets your expectations.
+  </Step>
+
+  <Step title="Schedule the workflow">
+    Enable periodic execution:
+
+    ```bash
+    jazz workflow schedule daily-standup-prep
+    ```
+
+    Jazz uses `launchd` on macOS and `cron` on Linux.
+  </Step>
+</Steps>
+
+## Workflow metadata
+
+### Required fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | string | Unique identifier (lowercase, hyphens) |
+| `schedule` | string | Cron expression for when to run |
+
+### Optional fields
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `description` | string | - | Human-readable description |
+| `agent` | string | `"default"` | Which agent to use |
+| `autoApprove` | string/boolean | `false` | Auto-approval policy |
+| `maxIterations` | number | - | Max agent iterations |
+| `catchUpOnStartup` | boolean | `false` | Run missed executions on startup |
+| `maxCatchUpAge` | number | - | Max age (seconds) for catch-up |
+| `skills` | string[] | - | Skills to load |
+
+Source: workflow.ts:26
+
+## Cron schedule format
+
+Workflows use standard cron syntax:
+
+```
+┌───────────── minute (0-59)
+│ ┌───────────── hour (0-23)
+│ │ ┌───────────── day of month (1-31)
+│ │ │ ┌───────────── month (1-12)
+│ │ │ │ ┌───────────── day of week (0-6, Sunday=0)
+│ │ │ │ │
+│ │ │ │ │
+* * * * *
+```
+
+### Common schedules
+
+<CodeGroup>
+```cron Hourly
+0 * * * *
+Every hour at :00
+```
+
+```cron Daily at 9 AM
+0 9 * * *
+Once per day at 9:00 AM
+```
+
+```cron Weekdays at 9 AM
+0 9 * * 1-5
+Monday through Friday at 9:00 AM
+```
+
+```cron Every 30 minutes
+*/30 * * * *
+At :00 and :30 of every hour
+```
+
+```cron Weekly on Monday
+0 9 * * 1
+Every Monday at 9:00 AM
+```
+
+```cron Monthly on 1st
+0 9 1 * *
+First day of each month at 9:00 AM
+```
+</CodeGroup>
+
+## Auto-approve policies
+
+Control how much autonomy each workflow gets:
+
+| Policy | What it auto-approves |
+|--------|----------------------|
+| `false` | Nothing - always asks for confirmation |
+| `"read-only"` | Reading files, searching, web requests |
+| `"low-risk"` | + archiving email, creating calendar events |
+| `"high-risk"` | + file changes, shell commands, git push |
+| `true` | Everything (use with extreme caution) |
+
+Source: README.md:176-186, workflow.ts:311-314
+
+### Choosing the right policy
+
+<Tip>
+  **read-only** for information gathering - research, monitoring, reporting
+</Tip>
+
+<Tip>
+  **low-risk** for organization tasks - email management, calendar updates
+</Tip>
+
+<Warning>
+  **high-risk** only for trusted workflows - deployment, git operations, file modifications
+</Warning>
+
+<Warning>
+  **true** (unrestricted) is dangerous - only use for fully tested, non-destructive workflows
+</Warning>
+
+## Built-in workflows
+
+Jazz ships with production-ready workflows:
+
+### Email cleanup
+
+```yaml
+---
+name: email-cleanup
+schedule: "0 * * * *"  # Hourly
+autoApprove: low-risk
+---
+
+Archive newsletters, organize promotions, flag important messages
+```
+
+### Tech digest
+
+```yaml
+---
+name: tech-digest
+schedule: "0 9 * * *"  # Daily at 9 AM
+autoApprove: read-only
+---
+
+Scan AI/tech news sources and compile a personalized digest
+```
+
+### Weather briefing
+
+```yaml
+---
+name: weather-briefing
+schedule: "0 7 * * *"  # Daily at 7 AM
+autoApprove: read-only
+---
+
+Weather forecast + outfit recommendations for your location
+```
+
+### Market analysis
+
+```yaml
+---
+name: market-analysis
+schedule: "0 9 * * 1-5"  # Weekdays at 9 AM
+autoApprove: read-only
+---
+
+Stock/crypto analysis with buy/sell signals
+```
+
+Source: README.md:138-145
+
+## Managing workflows
+
+### List all workflows
+
+```bash
+jazz workflow list
+```
+
+Shows local, global, and built-in workflows with their status:
+
+```
+Local workflows:
+  daily-standup-prep (0 9 * * 1-5) ● running
+  email-cleanup (0 * * * *) ○ scheduled
+
+Global workflows (~/.jazz/workflows):
+  tech-digest (0 9 * * *) — not scheduled
+
+Built-in workflows:
+  weather-briefing (0 7 * * *) — not scheduled
+
+Total: 4 workflow(s)
+```
+
+Source: workflow.ts:36-119
+
+### View workflow details
+
+```bash
+jazz workflow show email-cleanup
+```
+
+Displays full configuration and prompt:
+
+```
+📋 Workflow: email-cleanup
+
+Description: Archive newsletters and organize inbox
+Path: ~/.jazz/workflows/email-cleanup/WORKFLOW.md
+Agent: my-assistant
+Schedule: Every hour (0 * * * *)
+Auto-approve: low-risk
+
+────────────────────────────────────────────────────────────
+Prompt:
+────────────────────────────────────────────────────────────
+Check my unread emails. Archive any newsletters...
+```
+
+Source: workflow.ts:125-178
+
+### Run a workflow manually
+
+```bash
+jazz workflow run email-cleanup
+```
+
+Executes immediately, useful for testing.
+
+Source: workflow.ts:190-366
+
+### Schedule a workflow
+
+```bash
+jazz workflow schedule email-cleanup
+```
+
+Enables periodic execution:
+
+1. Verifies workflow exists and has a schedule
+2. Checks if agent exists (prompts to select if not)
+3. On macOS, asks about running on login/wake (catch-up for missed runs)
+4. Registers with system scheduler (launchd/cron)
+
+Source: workflow.ts:371-500
+
+### Unschedule a workflow
+
+```bash
+jazz workflow unschedule email-cleanup
+```
+
+Removes from scheduler. The workflow file remains.
+
+Source: workflow.ts:505-531
+
+### View scheduled workflows
+
+```bash
+jazz workflow scheduled
+```
+
+Lists all active schedules:
+
+```
+⏰ Scheduled Workflows
+
+Scheduler: launchd
+
+  email-cleanup (every hour) agent: my-assistant ✓ enabled
+  daily-standup-prep (weekdays at 9 AM) agent: dev-agent ✓ enabled
+
+Total: 2 scheduled workflow(s)
+```
+
+Source: workflow.ts:606-642
+
+### View workflow history
+
+```bash
+jazz workflow history
+
+# Or for a specific workflow
+jazz workflow history email-cleanup
+```
+
+Shows recent executions:
+
+```
+📜 Recent Workflow Runs
+
+  ✓ email-cleanup (scheduled) - completed (15s)
+    Started: 2024-01-15T10:00:00Z
+
+  ✓ daily-standup-prep (manual) - completed (8s)
+    Started: 2024-01-15T09:00:00Z
+
+  ✗ tech-digest (scheduled) - failed (stale)
+    Started: 2024-01-14T09:00:00Z
+    Error: Timeout after 4 hours
+
+Showing 3 most recent run(s)
+```
+
+Source: workflow.ts:647-707
+
+## Catch-up mechanism
+
+When your machine is asleep or off, scheduled runs are missed. Jazz can catch up automatically.
+
+### Enable catch-up
+
+Set in workflow frontmatter:
+
+```yaml
+---
+name: my-workflow
+schedule: "0 9 * * *"
+catchUpOnStartup: true
+maxCatchUpAge: 86400  # 24 hours
+---
+```
+
+### How it works
+
+1. When Jazz starts, it checks scheduled workflows
+2. For workflows with `catchUpOnStartup: true`, it calculates missed runs
+3. If last run was within `maxCatchUpAge`, it runs the workflow
+4. Marks the run as "catch-up" in history
+
+Source: workflow.ts:191-239
+
+### Manual catch-up
+
+```bash
+jazz workflow catchup
+```
+
+Interactively select workflows to run now:
+
+```
+🔄 Workflow catch-up
+
+Workflows that missed a scheduled run:
+
+  • email-cleanup (every hour) — missed at 2024-01-15T10:00:00Z
+  • tech-digest (daily at 9 AM) — missed at 2024-01-15T09:00:00Z
+
+Select workflows to run now (Space to toggle, Enter to confirm):
+❯ ◯ email-cleanup (2024-01-15T10:00:00Z)
+  ◯ tech-digest (2024-01-15T09:00:00Z)
+```
+
+Source: workflow.ts:536-601
+
+## Workflow examples
+
+### Daily standup prep
+
+```markdown
+---
+name: daily-standup-prep
+schedule: "0 9 * * 1-5"  # Weekdays at 9 AM
+agent: dev-agent
+autoApprove: read-only
+---
+
+Check my git activity from yesterday across all repos in ~/projects/.
+Summarize what I worked on, what PRs I opened or reviewed,
+and any blockers I mentioned in commit messages.
+Format it as bullet points I can paste into Slack.
+```
+
+### Weekly dependency audit
+
+```markdown
+---
+name: dependency-audit
+schedule: "0 10 * * 1"  # Monday at 10 AM
+agent: security-agent
+autoApprove: read-only
+---
+
+Scan all package.json files in ~/projects/ for:
+1. Outdated dependencies
+2. Known security vulnerabilities
+3. Deprecated packages
+
+Generate a report with recommended updates and security patches.
+```
+
+### Monthly cost optimization
+
+```markdown
+---
+name: cost-optimizer
+schedule: "0 9 1 * *"  # 1st of month at 9 AM
+agent: cloud-agent
+autoApprove: read-only
+---
+
+Analyze AWS/GCP cloud costs for the previous month.
+Identify unused resources, oversized instances, and optimization opportunities.
+Estimate potential savings and provide actionable recommendations.
+```
+
+## Workflows with skills
+
+Combine workflows with skills for specialized behavior:
+
+```markdown
+---
+name: competitive-analysis
+schedule: "0 9 * * 1"  # Weekly on Monday
+agent: research-agent
+autoApprove: read-only
+skills:
+  - deep-research
+  - documentation
+---
+
+Use deep-research to investigate our top 3 competitors:
+1. Product updates in the last week
+2. Pricing changes
+3. Customer sentiment on social media
+
+Use documentation skill to format findings in a structured report.
+Save to ~/reports/competitive-analysis-[date].md
+```
+
+Source: workflow.ts:161-163
+
+## CI/CD integration
+
+Workflows run in CI/CD pipelines with `--output raw` and `--auto-approve`:
+
+```yaml
+# .github/workflows/code-review.yml
+name: AI Code Review
+on: pull_request
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - run: npm install -g jazz-ai
+
+      - name: Run review workflow
+        run: jazz --output raw workflow run code-review --auto-approve
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+```
+
+Source: README.md:223-243
+
+## Best practices
+
+<Tip>
+  **Start with read-only** - Test workflows with restricted permissions before enabling auto-approve.
+</Tip>
+
+<Tip>
+  **Use specific agents** - Create dedicated agents for workflow tasks with minimal required tools.
+</Tip>
+
+<Tip>
+  **Monitor history** - Regularly check `jazz workflow history` to verify workflows run as expected.
+</Tip>
+
+<Tip>
+  **Enable catch-up** - Set `catchUpOnStartup: true` for workflows that should run even if delayed.
+</Tip>
+
+<Warning>
+  **Avoid high-risk auto-approve** - Only use for fully tested, non-destructive workflows you trust completely.
+</Warning>
+
+<Warning>
+  **Limit catch-up window** - Set reasonable `maxCatchUpAge` to avoid running stale workflows.
+</Warning>
+
+## Troubleshooting
+
+### Workflow not running
+
+Check if it's scheduled:
+
+```bash
+jazz workflow scheduled
+```
+
+Verify the cron schedule is correct:
+
+```bash
+jazz workflow show my-workflow
+```
+
+### Workflow fails with "agent not found"
+
+Ensure the agent exists:
+
+```bash
+jazz agent list
+```
+
+Update workflow to use an existing agent:
+
+```yaml
+---
+agent: existing-agent-name
+---
+```
+
+### Workflow stuck in "running" status
+
+If a workflow process crashes without updating status, it shows as "running" forever. After 4 hours, it's marked "failed (stale)".
+
+Force cleanup by running manually:
+
+```bash
+jazz workflow run my-workflow
+```
+
+Source: workflow.ts:61-82, 669-691
+
+## Next steps
+
+- [MCP integration](/guides/mcp-integration) - Connect workflows to external services
+- [Configuration](/guides/configuration) - Customize workflow behavior and logging
+- [LLM providers](/guides/llm-providers) - Choose the best models for workflow tasks

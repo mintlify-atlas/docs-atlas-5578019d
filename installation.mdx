@@ -1,0 +1,171 @@
+---
+title: Installation
+description: Install Jazz with your preferred package manager and start building AI agents in seconds.
+---
+
+Jazz is distributed as an npm package and can be installed globally using any Node.js package manager.
+
+## Requirements
+
+Before installing Jazz, make sure you have:
+
+- **Node.js** 22.16.0 or higher
+- **npm** 10.0.0 or higher (or equivalent with yarn, pnpm, or bun)
+
+<Tip>
+  We recommend using the latest LTS version of Node.js for the best experience.
+</Tip>
+
+## Install Jazz
+
+Choose your preferred package manager and run the global install command:
+
+<CodeGroup>
+
+```bash npm
+npm install -g jazz-ai
+```
+
+```bash yarn
+yarn global add jazz-ai
+```
+
+```bash pnpm
+pnpm add -g jazz-ai
+```
+
+```bash bun
+bun add -g jazz-ai
+```
+
+</CodeGroup>
+
+## Verify installation
+
+After installation, verify that Jazz is installed correctly by checking the version:
+
+```bash
+jazz --version
+```
+
+You should see the current version number printed to the terminal (e.g., `0.9.14`).
+
+## Start Jazz
+
+Once installed, you can start Jazz by running:
+
+```bash
+jazz
+```
+
+On first run, Jazz will walk you through the initial setup, including:
+
+- Configuring your preferred LLM provider (OpenAI, Anthropic, Google, etc.)
+- Setting up API keys
+- Enabling desktop notifications (optional)
+
+<Note>
+  If you have API keys set as environment variables (like `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`), Jazz will automatically detect and use them.
+</Note>
+
+## Supported LLM providers
+
+Jazz supports multiple LLM providers out of the box:
+
+- **OpenAI** - GPT-4, GPT-4 Turbo, GPT-3.5
+- **Anthropic** - Claude 3 Opus, Sonnet, Haiku
+- **Google** - Gemini Pro, Gemini Ultra
+- **Mistral** - Mistral Medium, Small, Tiny
+- **xAI** - Grok models
+- **DeepSeek** - DeepSeek Chat
+- **Groq** - High-speed inference
+- **Cerebras** - Fast inference
+- **Fireworks** - Various models
+- **TogetherAI** - Multiple model options
+- **Ollama** - Run models locally
+- **OpenRouter** - Access to 100+ models
+
+<Tip>
+  Start for free with [OpenRouter](https://openrouter.ai) by selecting the [Free Models Router](https://openrouter.ai/openrouter/free). No credit card required.
+</Tip>
+
+## Set up API keys
+
+You can configure API keys in two ways:
+
+### Environment variables
+
+Export your API keys as environment variables:
+
+```bash
+export OPENAI_API_KEY="sk-..."
+export ANTHROPIC_API_KEY="sk-ant-..."
+export GOOGLE_GENERATIVE_AI_API_KEY="..."
+```
+
+### Configuration wizard
+
+Run the configuration wizard to set up API keys interactively:
+
+```bash
+jazz config show
+```
+
+Or set a specific configuration value:
+
+```bash
+jazz config set openai.apiKey "sk-..."
+```
+
+## Keep Jazz updated
+
+Jazz includes a built-in update command to keep your installation current:
+
+```bash
+jazz update
+```
+
+This will check for the latest version and update Jazz if a newer version is available.
+
+You can also check for updates without installing:
+
+```bash
+jazz update --check
+```
+
+## Troubleshooting
+
+### Permission errors
+
+If you encounter permission errors during global installation, you may need to use `sudo` (on macOS/Linux) or run your terminal as administrator (on Windows):
+
+```bash
+sudo npm install -g jazz-ai
+```
+
+Alternatively, configure npm to use a different directory for global packages:
+
+```bash
+mkdir ~/.npm-global
+npm config set prefix '~/.npm-global'
+echo 'export PATH=~/.npm-global/bin:$PATH' >> ~/.bashrc
+source ~/.bashrc
+```
+
+### Node version issues
+
+If you're running an older version of Node.js, upgrade to the latest LTS version:
+
+```bash
+# Using nvm (Node Version Manager)
+nvm install --lts
+nvm use --lts
+
+# Or download from https://nodejs.org
+```
+
+## Next steps
+
+<Card title="Quick start guide" icon="rocket" href="/quickstart">
+  Create your first agent and start automating tasks
+</Card>

@@ -1,0 +1,172 @@
+---
+title: Workflow overview
+description: Automate recurring tasks by scheduling AI agents to run at specific times
+---
+
+Workflows let you automate recurring tasks by scheduling agents to run at specific times. Think of them as "cron jobs for AI agents" - scheduled automation that can read your emails, research topics, manage your calendar, and more.
+
+## What are workflows?
+
+A workflow is a Markdown file that describes:
+- What your agent should do
+- When it should run
+- How much autonomy it gets
+
+Workflows use YAML frontmatter to define metadata and scheduling, with the content below serving as the prompt for your agent.
+
+## Built-in workflows
+
+Jazz ships with production-ready workflows:
+
+| Workflow | Schedule | Description |
+| --- | --- | --- |
+| **email-cleanup** | Hourly | Archive newsletters, organize promotions, flag important messages |
+| **tech-digest** | Daily | Scan AI/tech news sources and compile a personalized digest |
+| **weather-briefing** | Every morning | Weather forecast + outfit recommendations for your location |
+| **market-analysis** | Daily | Stock/crypto analysis with buy/sell signals |
+
+## Workflow locations
+
+Workflows can be stored in three locations, prioritized by proximity:
+
+<Steps>
+  <Step title="Local (project-specific)">
+    `./workflows/<name>/WORKFLOW.md`
+    
+    Highest priority. Use for project-specific automation.
+  </Step>
+  
+  <Step title="Global (user-wide)">
+    `~/.jazz/workflows/<name>/WORKFLOW.md`
+    
+    Personal workflows available across all projects.
+  </Step>
+  
+  <Step title="Built-in (shipped with Jazz)">
+    `<jazz-install>/workflows/<name>/WORKFLOW.md`
+    
+    Pre-built workflows that ship with Jazz.
+  </Step>
+</Steps>
+
+<Note>
+  Local workflows override global workflows with the same name, which override built-in workflows.
+</Note>
+
+## Quick start
+
+### List available workflows
+
+```bash
+jazz workflow list
+```
+
+### Run a workflow manually
+
+```bash
+jazz workflow run email-cleanup
+```
+
+### Schedule a workflow
+
+```bash
+jazz workflow schedule email-cleanup
+```
+
+Jazz will prompt you to select an agent if the workflow doesn't specify one.
+
+### View scheduled workflows
+
+```bash
+jazz workflow scheduled
+```
+
+### Check run history
+
+```bash
+jazz workflow history email-cleanup
+```
+
+## How scheduling works
+
+Jazz uses your system's native scheduler:
+
+- **macOS**: launchd (creates plist files in `~/Library/LaunchAgents/`)
+- **Linux**: cron (adds entries to your user crontab)
+
+<Warning>
+  Scheduled workflows only run if your computer is powered on and awake at the scheduled time. If your computer is asleep, those runs are skipped.
+</Warning>
+
+## Catch-up on startup
+
+Workflows can catch up on missed runs when you start Jazz:
+
+```yaml
+---
+catchUpOnStartup: true
+maxCatchUpAge: 43200  # 12 hours in seconds
+---
+```
+
+When you run any Jazz command, you'll be notified of missed workflows and can choose which ones to run.
+
+## Best practices
+
+### Start conservative
+
+Use `autoApprove: read-only` for research/monitoring workflows, then increase to `low-risk` or `high-risk` once you trust the workflow.
+
+### Test manually first
+
+Before scheduling, run the workflow manually to verify it works:
+
+```bash
+jazz workflow run my-workflow
+```
+
+### Include safety guidelines
+
+Add explicit safety rules in your workflow prompt:
+
+```markdown
+**Safety Rules:**
+- When in doubt, DO NOTHING
+- Only perform actions you're 100% confident about
+- Leave uncertain items for manual review
+```
+
+### Choose the right agent
+
+Different workflows may need different agents:
+- Research workflows → agent with strong reasoning
+- Email management → agent with email tools enabled
+- Code tasks → agent with filesystem and git tools
+
+### Monitor logs
+
+Check logs after scheduled runs:
+
+```bash
+tail -f ~/.jazz/logs/email-cleanup.log
+```
+
+## Run history and logs
+
+Every workflow execution is tracked:
+
+- **Run history**: `~/.jazz/run-history.json` (last 100 runs)
+- **Logs**: `~/.jazz/logs/<workflow-name>.log`
+- **Schedule metadata**: `~/.jazz/schedules/<workflow-name>.json`
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Workflow structure" icon="file-code" href="/api/workflows/structure">
+    Learn the YAML frontmatter format and content structure
+  </Card>
+  
+  <Card title="Scheduling" icon="clock" href="/api/workflows/scheduling">
+    Understand cron expressions and auto-approve policies
+  </Card>
+</CardGroup>

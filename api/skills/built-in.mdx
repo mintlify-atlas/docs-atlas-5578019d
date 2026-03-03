@@ -1,0 +1,376 @@
+---
+title: Built-in skills
+description: Complete reference of all 23 skills that ship with Jazz
+---
+
+Jazz ships with 23 built-in skills that cover common workflows. Each skill follows the progressive disclosure model: the agent sees only the name and description until it needs the full playbook.
+
+## Development & code
+
+<AccordionGroup>
+  <Accordion title="code-review">
+    Review code for quality, security, and style using structured checklists. Use when reviewing PRs, giving feedback on code, or auditing code quality.
+
+    **When to use**: Code review, PR review, quality audits
+
+    **Key features**:
+    - Structured checklist for correctness, security, performance, maintainability
+    - Handles large PRs with batched diff analysis
+    - Gathers context from surrounding code, call sites, and tests
+    - Prioritized feedback (critical, suggestions, nice-to-have)
+    - Security-sensitive area detection
+  </Accordion>
+
+  <Accordion title="commit-message">
+    Suggest conventional commit messages from diff and context. Use when committing changes, writing commit message, or summarizing staged changes.
+
+    **When to use**: Creating commits, writing commit messages
+
+    **Key features**:
+    - Analyzes git diff to understand changes
+    - Follows conventional commit format
+    - Focuses on "why" rather than "what"
+    - Reviews recent commits to match style
+  </Accordion>
+
+  <Accordion title="pr-description">
+    Generate pull request titles and descriptions from diffs and context. Use when creating a PR, writing PR description, drafting merge request, or summarizing changes for review.
+
+    **When to use**: Creating pull requests, drafting merge requests
+
+    **Key features**:
+    - Analyzes full branch history from divergence
+    - Generates title and detailed description
+    - Includes summary of all commits
+    - Ready to paste into GitHub/GitLab
+  </Accordion>
+
+  <Accordion title="documentation">
+    Generate or update documentation from code, APIs, and context. Use when documenting code, writing README, API docs, or keeping docs in sync with implementation.
+
+    **When to use**: Writing docs, updating README, API documentation
+
+    **Key features**:
+    - Extracts information from code structure
+    - Maintains consistency with existing docs
+    - Generates API reference from code
+    - Keeps documentation in sync
+  </Accordion>
+</AccordionGroup>
+
+## Research & analysis
+
+<AccordionGroup>
+  <Accordion title="deep-research">
+    Conduct comprehensive multi-source research for complex questions. Use when you ask a complicated question requiring multiple sources, in-depth analysis, cross-referencing, or expert-level research reports.
+
+    **Triggers**: "research", "investigate", "deep dive", "analyze thoroughly", "comprehensive report"
+
+    **Key features**:
+    - Query decomposition into sub-questions
+    - Parallel search execution across multiple sources
+    - Iterative verification loop with cross-referencing
+    - Source tracking and citation
+    - Confidence assessment for claims
+    - Memory system for tracking research progress
+    - PDF and document analysis
+    - Interactive checkpoints for feedback
+
+    **Research pipeline**:
+    1. Decompose complex question into atomic sub-questions
+    2. Plan research strategy with priority ordering
+    3. Execute parallel searches efficiently
+    4. Verify findings with multiple sources
+    5. Synthesize report with citations
+  </Accordion>
+
+  <Accordion title="investment-analysis">
+    In-depth analysis of investment assets (gold, silver, bitcoin, equities, etc.) to support investment decisions. Use when you want to understand an asset's current state, market analysis, patterns, forecasts, or whether it fits your situation.
+
+    **Triggers**: "investment analysis", "analyze gold/bitcoin/silver", "should I invest in X", "market analysis"
+
+    **Key features**:
+    - Current state and market analysis
+    - Historical patterns and trends
+    - Expert forecasts and predictions
+    - Risk assessment
+    - Personal fit analysis
+  </Accordion>
+
+  <Accordion title="digest">
+    Build news or topic digests using curated high-quality sources. Use when you want tech news, a digest, "what's new in X", daily or weekly roundup, research papers roundup, or news from trusted sources only.
+
+    **When to use**: News digests, topic roundups, staying current
+
+    **Key features**:
+    - Curated high-quality sources
+    - Time-aware content (respects user time frame)
+    - Structured digest format
+    - Category-based organization
+  </Accordion>
+</AccordionGroup>
+
+## Productivity & planning
+
+<AccordionGroup>
+  <Accordion title="todo">
+    Create and track task lists for complex multi-step work. Use when planning projects, breaking down work, tracking progress, or when a task has 3+ steps.
+
+    **Triggers**: "plan", "todo", "task list", "break down", "step by step"
+
+    **Key features**:
+    - Create structured task lists with priorities
+    - Track progress (pending, in_progress, completed, cancelled)
+    - One item in progress at a time
+    - Immediate status updates after completing tasks
+    - Common patterns: investigation, feature implementation, research
+  </Accordion>
+
+  <Accordion title="meeting-notes">
+    Summarize meetings and extract action items. Use when processing meeting transcripts, notes, or recordings to get summaries, decisions, and follow-ups.
+
+    **When to use**: Processing meeting transcripts, extracting action items
+
+    **Key features**:
+    - Structured summary format
+    - Extracts decisions and action items
+    - Identifies participants and roles
+    - Captures next steps
+  </Accordion>
+
+  <Accordion title="journal">
+    Support reflection and journaling with prompts and structure. Use when you want to journal, reflect on your day, practice gratitude, or get writing prompts for personal reflection.
+
+    **When to use**: Journaling, daily reflection, gratitude practice
+
+    **Key features**:
+    - Reflection prompts
+    - Structured journaling templates
+    - Gratitude exercises
+    - Daily review format
+  </Accordion>
+
+  <Accordion title="decision-log">
+    Record and retrieve decisions with context, options, and rationale. Use when documenting a decision, reviewing past decisions, or answering "why did we choose X?"
+
+    **When to use**: Documenting decisions, reviewing past choices
+
+    **Key features**:
+    - Captures decision context
+    - Records options considered
+    - Documents rationale
+    - Enables decision retrieval
+  </Accordion>
+</AccordionGroup>
+
+## Communication & content
+
+<AccordionGroup>
+  <Accordion title="email">
+    Manage emails via Himalaya CLI. Use when you want to read, send, search, or organize emails.
+
+    **Triggers**: "email", "inbox", "send email", "check mail", "reply to", "forward"
+
+    **Key features**:
+    - Read and search emails
+    - Send and reply to messages
+    - Organize and archive
+    - Supports Gmail, Outlook, iCloud, Proton Mail
+    - Uses Himalaya CLI for email operations
+  </Accordion>
+
+  <Accordion title="calendar">
+    Manage calendars using khal CLI and vdirsyncer. Use when you want to view, create, edit, or delete calendar events, sync calendars with CalDAV servers, manage multiple calendars.
+
+    **Triggers**: "calendar", "event", "appointment", "meeting", "schedule", "CalDAV", "khal"
+
+    **Key features**:
+    - View and create events
+    - Edit and delete appointments
+    - CalDAV sync support
+    - Multiple calendar management
+    - Uses khal and vdirsyncer CLIs
+  </Accordion>
+
+  <Accordion title="defuddle">
+    Extract clean markdown content from web pages using Defuddle CLI, removing clutter and navigation to save tokens. Use instead of WebFetch when you provide a URL to read or analyze.
+
+    **When to use**: Reading web pages, online documentation, articles, blog posts
+
+    **Key features**:
+    - Removes navigation and clutter
+    - Extracts clean markdown
+    - Saves tokens in context window
+    - Better than raw HTML parsing
+  </Accordion>
+</AccordionGroup>
+
+## Financial & budgeting
+
+<AccordionGroup>
+  <Accordion title="budget">
+    Create and manage budgets, track spending, and plan savings. Use when you want to budget, track expenses, plan savings, or allocate income.
+
+    **Triggers**: "budget", "expenses", "savings goal", "track spending", "monthly budget", "50/30/20", "envelope budget"
+
+    **Key features**:
+    - Budget creation and planning
+    - Expense tracking
+    - Savings goal setting
+    - Multiple budgeting frameworks (50/30/20, envelope, zero-based)
+    - Income allocation
+  </Accordion>
+</AccordionGroup>
+
+## Knowledge management
+
+<AccordionGroup>
+  <Accordion title="obsidian">
+    Use the official Obsidian CLI (v1.12+) to manage vaults, notes, daily notes, search, tasks, tags, properties, links, templates, sync, publish, and workspaces. Use when you mention Obsidian, vaults, notes, or want to automate note-taking and knowledge base workflows.
+
+    **When to use**: Managing Obsidian vaults, automating note-taking
+
+    **Key features**:
+    - Vault and note management
+    - Daily notes creation
+    - Search and task management
+    - Tags and properties
+    - Links and backlinks
+    - Templates and automation
+    - Sync and publish support
+  </Accordion>
+</AccordionGroup>
+
+## Automation & workflows
+
+<AccordionGroup>
+  <Accordion title="create-workflow">
+    Create Jazz workflow automation files (WORKFLOW.md). Use this for scheduling Jazz agents to run recurring tasks.
+
+    **When to use**: Scheduling Jazz agents, creating recurring automation
+
+    **Key features**:
+    - Creates WORKFLOW.md files
+    - Defines agent schedules (cron syntax)
+    - Sets auto-approve policies
+    - Configures workflow parameters
+
+    **Note**: For OS-level script scheduling, use `create-system-routine` instead.
+  </Accordion>
+
+  <Accordion title="create-system-routine">
+    Create time-based system routines (cron/launchd) for scripts or commands. Use this for OS-level scheduling, NOT for Jazz Workflows.
+
+    **When to use**: Scheduling system scripts, cron jobs, OS-level automation
+
+    **Key features**:
+    - Creates cron jobs (Linux)
+    - Creates launchd plists (macOS)
+    - Schedules arbitrary commands
+    - OS-level scheduling
+
+    **Note**: For Jazz agent scheduling, use `create-workflow` instead.
+  </Accordion>
+
+  <Accordion title="browser-use">
+    Automates browser interactions for web testing, form filling, screenshots, and data extraction. Use when you need to navigate websites, interact with web pages, fill forms, take screenshots, or extract information that can't be easily found via API.
+
+    **When to use**: Web automation, form filling, screenshots, data extraction, checking flight prices, hotel rates
+
+    **Key features**:
+    - Browser navigation and interaction
+    - Form filling automation
+    - Screenshot capture
+    - Data extraction from web pages
+    - Handles dynamic content
+    - Useful for information not available via API
+  </Accordion>
+</AccordionGroup>
+
+## Project & code generation
+
+<AccordionGroup>
+  <Accordion title="boilerplate">
+    Generate project scaffolds from descriptions. Use when starting a new project, scaffolding, or creating "CLI in Go", "React app with auth", or similar from a short description.
+
+    **When to use**: Starting new projects, creating project scaffolds
+
+    **Key features**:
+    - Generates project structure
+    - Creates boilerplate code
+    - Sets up build configuration
+    - Includes common patterns
+    - Supports multiple languages and frameworks
+  </Accordion>
+</AccordionGroup>
+
+## Startup & business
+
+<AccordionGroup>
+  <Accordion title="startup-brainstorm">
+    Brainstorm startup ideas using top-founder mental models, trend analysis, and competition research. Use when you want to brainstorm startup ideas, explore business opportunities, validate concepts, or think like elite founders.
+
+    **Triggers**: "startup ideas", "business ideas", "what should I build", "startup brainstorm", "idea validation", "trends and opportunities"
+
+    **Key features**:
+    - Founder mental models (YC, Thiel, Graham)
+    - Trend analysis and pattern recognition
+    - Competition research
+    - Market opportunity assessment
+    - Idea validation framework
+    - Bias toward action
+  </Accordion>
+</AccordionGroup>
+
+## Agent & skill management
+
+<AccordionGroup>
+  <Accordion title="persona">
+    Help you create, manage, and refine custom personas for Jazz agents. Use when you want to define a new communication style, character, or identity for an agent.
+
+    **When to use**: Creating agent personas, defining communication styles
+
+    **Key features**:
+    - Define agent personality
+    - Set communication style
+    - Configure tone and voice
+    - Create custom characters
+    - Refine agent behavior
+  </Accordion>
+
+  <Accordion title="skill-creator">
+    Create new Jazz skills for automating workflows. Use when you ask to create a skill, make a skill, or want to define custom automation behavior.
+
+    **When to use**: Creating custom skills, defining new workflows
+
+    **Key features**:
+    - Interactive questionnaire for skill definition
+    - Generates proper SKILL.md structure
+    - Sets up supporting files and scripts
+    - Validates skill format
+    - Creates global or project-specific skills
+
+    **Questionnaire covers**:
+    - Purpose and workflow
+    - Location (global vs project-specific)
+    - Trigger phrases
+    - Domain knowledge needed
+    - Output format requirements
+  </Accordion>
+</AccordionGroup>
+
+## Quick reference
+
+Use `/skills` in chat to list all available skills and view their full instructions.
+
+**Skills by category**:
+- **Development**: code-review, commit-message, pr-description, documentation
+- **Research**: deep-research, investment-analysis, digest, defuddle
+- **Productivity**: todo, meeting-notes, journal, decision-log
+- **Communication**: email, calendar
+- **Financial**: budget
+- **Knowledge**: obsidian
+- **Automation**: create-workflow, create-system-routine, browser-use
+- **Generation**: boilerplate
+- **Business**: startup-brainstorm
+- **Meta**: persona, skill-creator

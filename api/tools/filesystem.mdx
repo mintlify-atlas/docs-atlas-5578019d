@@ -1,0 +1,830 @@
+---
+title: Filesystem tools
+description: Read, write, search, and manipulate files and directories
+---
+
+Filesystem tools provide comprehensive file and directory operations. Tools are organized by operation type: navigation, read, search, and write.
+
+## Tool organization
+
+All filesystem tools are accessed through the `fs` namespace:
+
+```typescript
+import { fs } from "@/core/agent/tools/fs";
+
+// Navigation tools
+const pwdTool = fs.pwd();
+const cdTool = fs.cd();
+const lsTool = fs.ls();
+
+// Read tools
+const readTool = fs.read();
+const headTool = fs.head();
+
+// Search tools
+const grepTool = fs.grep();
+const findTool = fs.find();
+
+// Write tools (approval required)
+const writeTools = fs.write();
+yield* registerTool(writeTools.approval);
+yield* registerTool(writeTools.execute);
+```
+
+## Navigation tools
+
+### pwd
+
+Get the current working directory.
+
+**Parameters:** None
+
+**Returns:**
+
+<ResponseField name="path" type="string">
+  Current working directory path
+</ResponseField>
+
+**Example:**
+
+```typescript
+const result = yield* pwdTool.handler({}, context);
+// { success: true, result: { path: "/home/user/project" } }
+```
+
+### cd
+
+Change the current working directory.
+
+**Parameters:**
+
+<ParamField path="path" type="string" required>
+  Target directory path (relative or absolute)
+</ParamField>
+
+**Returns:**
+
+<ResponseField name="path" type="string">
+  New working directory path
+</ResponseField>
+
+### ls
+
+List directory contents with filtering and recursion.
+
+**Parameters:**
+
+<ParamField path="path" type="string">
+  Directory path (defaults to current working directory)
+</ParamField>
+
+<ParamField path="showHidden" type="boolean" default={false}>
+  Include hidden files (starting with `.`)
+</ParamField>
+
+<ParamField path="recursive" type="boolean" default={false}>
+  Recurse into subdirectories
+</ParamField>
+
+<ParamField path="pattern" type="string">
+  Name filter. Supports:
+  - Substring match: `"test"`
+  - Regex: `"re:test.*\\.ts$"`
+</ParamField>
+
+<ParamField path="maxResults" type="number" default={200}>
+  Maximum results (cap: 2000)
+</ParamField>
+
+<ParamField path="maxDepth" type="number" default={10}>
+  Maximum depth for recursive listing
+</ParamField>
+
+**Returns:**
+
+Array of entries:
+
+<ResponseField name="path" type="string">
+  Full path to file or directory
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  File or directory name
+</ResponseField>
+
+<ResponseField name="type" type="'file' | 'dir'">
+  Entry type
+</ResponseField>
+
+**Example:**
+
+```typescript
+const result = yield* lsTool.handler(
+  {
+    path: "src",
+    recursive: true,
+    pattern: "*.ts",
+    maxResults: 100,
+  },
+  context
+);
+```
+
+### stat
+
+Get file or directory metadata.
+
+**Parameters:**
+
+<ParamField path="path" type="string" required>
+  File or directory path
+</ParamField>
+
+**Returns:**
+
+<ResponseField name="type" type="'File' | 'Directory' | 'SymbolicLink'">
+  Entry type
+</ResponseField>
+
+<ResponseField name="size" type="number">
+  Size in bytes
+</ResponseField>
+
+<ResponseField name="mtime" type="number">
+  Last modified time (milliseconds since epoch)
+</ResponseField>
+
+## Read tools
+
+### read_file
+
+Read file contents with optional line range filtering.
+
+**Parameters:**
+
+<ParamField path="path" type="string" required>
+  File path to read
+</ParamField>
+
+<ParamField path="startLine" type="number">
+  1-based start line (inclusive)
+</ParamField>
+
+<ParamField path="endLine" type="number">
+  1-based end line (inclusive)
+</ParamField>
+
+<ParamField path="maxBytes" type="number" default={131072}>
+  Maximum bytes to return (cap: 524288 = 512KB)
+</ParamField>
+
+<ParamField path="encoding" type="string" default="utf-8">
+  Text encoding
+</ParamField>
+
+**Returns:**
+
+<ResponseField name="path" type="string">
+  Resolved file path
+</ResponseField>
+
+<ResponseField name="content" type="string">
+  File contents
+</ResponseField>
+
+<ResponseField name="encoding" type="string">
+  Encoding used
+</ResponseField>
+
+<ResponseField name="truncated" type="boolean">
+  Whether output was truncated
+</ResponseField>
+
+<ResponseField name="totalLines" type="number">
+  Total lines in file
+</ResponseField>
+
+<ResponseField name="returnedLines" type="number">
+  Lines returned
+</ResponseField>
+
+<ResponseField name="range" type="object">
+  Line range if specified:
+  <Expandable title="properties">
+    <ResponseField name="startLine" type="number">
+      Start line (1-based)
+    </ResponseField>
+    <ResponseField name="endLine" type="number">
+      End line (1-based)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+**Example:**
+
+```typescript
+// Read entire file
+const result1 = yield* readTool.handler({ path: "src/main.ts" }, context);
+
+// Read specific lines
+const result2 = yield* readTool.handler(
+  {
+    path: "src/main.ts",
+    startLine: 10,
+    endLine: 50,
+  },
+  context
+);
+```
+
+### head
+
+Read first N lines of a file.
+
+**Parameters:**
+
+<ParamField path="path" type="string" required>
+  File path
+</ParamField>
+
+<ParamField path="lines" type="number" default={10}>
+  Number of lines to read
+</ParamField>
+
+### tail
+
+Read last N lines of a file.
+
+**Parameters:**
+
+<ParamField path="path" type="string" required>
+  File path
+</ParamField>
+
+<ParamField path="lines" type="number" default={10}>
+  Number of lines to read
+</ParamField>
+
+### readPdf
+
+Read PDF file contents.
+
+**Parameters:**
+
+<ParamField path="path" type="string" required>
+  PDF file path
+</ParamField>
+
+<ParamField path="pages" type="number[]">
+  Specific pages to extract (1-based)
+</ParamField>
+
+**Returns:**
+
+<ResponseField name="text" type="string">
+  Extracted text content
+</ResponseField>
+
+<ResponseField name="totalPages" type="number">
+  Total pages in PDF
+</ResponseField>
+
+### pdfPageCount
+
+Get total page count of a PDF file.
+
+**Parameters:**
+
+<ParamField path="path" type="string" required>
+  PDF file path
+</ParamField>
+
+**Returns:**
+
+<ResponseField name="pageCount" type="number">
+  Total pages
+</ResponseField>
+
+## Search tools
+
+### grep
+
+Search file contents using text patterns or regex. Uses ripgrep when available, falls back to system grep.
+
+**Parameters:**
+
+<ParamField path="pattern" type="string" required>
+  Search pattern. Supports:
+  - Literal text: `"error"`
+  - Regex: `"re:error.*\\d+"`
+</ParamField>
+
+<ParamField path="path" type="string">
+  Path to search (defaults to current working directory)
+</ParamField>
+
+<ParamField path="recursive" type="boolean" default={true}>
+  Recurse into subdirectories
+</ParamField>
+
+<ParamField path="regex" type="boolean" default={false}>
+  Treat pattern as regex
+</ParamField>
+
+<ParamField path="ignoreCase" type="boolean" default={false}>
+  Case-insensitive matching
+</ParamField>
+
+<ParamField path="maxResults" type="number" default={200}>
+  Maximum matches (cap: 2000)
+</ParamField>
+
+<ParamField path="filePattern" type="string">
+  File glob filter (e.g., `"*.ts"`, `"*.{js,jsx}"`)
+</ParamField>
+
+<ParamField path="exclude" type="string">
+  Exclude files matching pattern
+</ParamField>
+
+<ParamField path="excludeDir" type="string">
+  Exclude directories matching pattern
+</ParamField>
+
+<ParamField path="contextLines" type="number" default={0}>
+  Context lines above/below each match
+</ParamField>
+
+<ParamField path="outputMode" type="'content' | 'files' | 'count'" default="content">
+  Output format:
+  - `content`: Show matching lines with line numbers
+  - `files`: Show only file paths
+  - `count`: Show match counts per file
+</ParamField>
+
+**Returns:**
+
+<ResponseField name="pattern" type="string">
+  Search pattern used
+</ResponseField>
+
+<ResponseField name="searchPath" type="string">
+  Path searched
+</ResponseField>
+
+<ResponseField name="backend" type="'ripgrep' | 'grep'">
+  Backend used for search
+</ResponseField>
+
+<ResponseField name="outputMode" type="string">
+  Output mode used
+</ResponseField>
+
+<ResponseField name="matches" type="array">
+  Matches found (when `outputMode: 'content'`):
+  <Expandable title="Match object">
+    <ResponseField name="file" type="string">
+      File path
+    </ResponseField>
+    <ResponseField name="line" type="number">
+      Line number
+    </ResponseField>
+    <ResponseField name="text" type="string">
+      Matching line text
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="files" type="string[]">
+  File paths (when `outputMode: 'files'`)
+</ResponseField>
+
+<ResponseField name="counts" type="array">
+  Match counts (when `outputMode: 'count'`):
+  <Expandable title="Count object">
+    <ResponseField name="file" type="string">
+      File path
+    </ResponseField>
+    <ResponseField name="count" type="number">
+      Number of matches
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="totalFound" type="number">
+  Total results found
+</ResponseField>
+
+**Example:**
+
+```typescript
+// Search for error messages in TypeScript files
+const result = yield* grepTool.handler(
+  {
+    pattern: "re:error.*\\d+",
+    regex: true,
+    filePattern: "*.ts",
+    contextLines: 2,
+    maxResults: 100,
+  },
+  context
+);
+```
+
+### find
+
+Find files and directories by name, glob, or regex. Uses fast-glob by default, falls back to fd/find for advanced filters.
+
+**Parameters:**
+
+<ParamField path="path" type="string">
+  Start directory. Omit for smart hierarchical search (cwd → parents → home)
+</ParamField>
+
+<ParamField path="name" type="string">
+  Name filter. Supports:
+  - Substring: `"test"`
+  - Glob: `"*.ts"`, `"**/*.test.ts"`
+  - Regex: `"re:test.*\\.ts$"`
+</ParamField>
+
+<ParamField path="type" type="'file' | 'dir' | 'all' | 'symlink'" default="all">
+  Type filter
+</ParamField>
+
+<ParamField path="maxDepth" type="number" default={25}>
+  Maximum depth (0 = current directory only)
+</ParamField>
+
+<ParamField path="minDepth" type="number" default={0}>
+  Minimum depth (triggers fd/find backend)
+</ParamField>
+
+<ParamField path="maxResults" type="number" default={200}>
+  Maximum results (cap: 2000)
+</ParamField>
+
+<ParamField path="includeHidden" type="boolean" default={false}>
+  Include hidden files and directories
+</ParamField>
+
+<ParamField path="smart" type="boolean" default={true}>
+  Smart hierarchical search. Disable when providing specific path
+</ParamField>
+
+<ParamField path="pathPattern" type="string">
+  Full-path pattern (e.g., `"**/test/**"`). Triggers fd/find backend
+</ParamField>
+
+<ParamField path="excludePaths" type="string[]">
+  Paths to exclude. Triggers fd/find backend
+</ParamField>
+
+<ParamField path="caseSensitive" type="boolean" default={false}>
+  Case-sensitive matching
+</ParamField>
+
+<ParamField path="size" type="string">
+  Size filter (e.g., `"+100M"`, `"-1k"`). Triggers fd/find backend
+</ParamField>
+
+<ParamField path="mtime" type="string">
+  Modification time filter:
+  - `"-7"`: Last 7 days
+  - `"+30"`: Older than 30 days
+  
+  Triggers fd/find backend
+</ParamField>
+
+**Returns:**
+
+Array of entries:
+
+<ResponseField name="path" type="string">
+  Full path
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  File or directory name
+</ResponseField>
+
+<ResponseField name="type" type="'file' | 'dir' | 'symlink'">
+  Entry type
+</ResponseField>
+
+**Example:**
+
+```typescript
+// Find TypeScript test files modified in last 7 days
+const result = yield* findTool.handler(
+  {
+    name: "*.test.ts",
+    mtime: "-7",
+    maxResults: 50,
+  },
+  context
+);
+```
+
+## Write tools
+
+All write tools require user approval before execution.
+
+### write_file
+
+Write content to a file, creating it if needed.
+
+**Parameters:**
+
+<ParamField path="path" type="string" required>
+  File path (created if doesn't exist)
+</ParamField>
+
+<ParamField path="content" type="string" required>
+  Full file content (replaces existing content)
+</ParamField>
+
+<ParamField path="encoding" type="string" default="utf-8">
+  Text encoding
+</ParamField>
+
+<ParamField path="createDirs" type="boolean" default={false}>
+  Create parent directories if missing
+</ParamField>
+
+**Returns:**
+
+<ResponseField name="path" type="string">
+  Written file path
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Success message
+</ResponseField>
+
+<ResponseField name="isNewFile" type="boolean">
+  Whether file was newly created
+</ResponseField>
+
+<ResponseField name="diff" type="string">
+  Unified diff showing changes
+</ResponseField>
+
+### edit_file
+
+Edit specific parts of a file using structured operations.
+
+**Parameters:**
+
+<ParamField path="path" type="string" required>
+  File path (must exist)
+</ParamField>
+
+<ParamField path="edits" type="array" required>
+  Edit operations to apply in order. Each operation is one of:
+  
+  <Expandable title="replace_lines">
+    Replace a range of lines:
+    
+    <ParamField path="type" type="'replace_lines'" required />
+    <ParamField path="startLine" type="number" required>
+      Start line (1-based)
+    </ParamField>
+    <ParamField path="endLine" type="number" required>
+      End line (1-based)
+    </ParamField>
+    <ParamField path="content" type="string" required>
+      Replacement content
+    </ParamField>
+  </Expandable>
+  
+  <Expandable title="replace_pattern">
+    Find and replace text patterns:
+    
+    <ParamField path="type" type="'replace_pattern'" required />
+    <ParamField path="pattern" type="string" required>
+      Pattern to find. Supports:
+      - Literal: `"oldText"`
+      - Regex: `"re:old.*Text"`
+      
+      Only for simple bulk find-and-replace (e.g., renaming variables). Use `replace_lines` for structural edits
+    </ParamField>
+    <ParamField path="replacement" type="string" required>
+      Replacement text
+    </ParamField>
+    <ParamField path="count" type="number" default={1}>
+      Matches to replace:
+      - `1`: First match only (default)
+      - `-1`: All matches
+      - `n`: First n matches
+    </ParamField>
+  </Expandable>
+  
+  <Expandable title="insert">
+    Insert content at a specific line:
+    
+    <ParamField path="type" type="'insert'" required />
+    <ParamField path="line" type="number" required>
+      Insert after this line (0 = before first line)
+    </ParamField>
+    <ParamField path="content" type="string" required>
+      Content to insert
+    </ParamField>
+  </Expandable>
+  
+  <Expandable title="delete_lines">
+    Delete a range of lines:
+    
+    <ParamField path="type" type="'delete_lines'" required />
+    <ParamField path="startLine" type="number" required>
+      Start line (1-based)
+    </ParamField>
+    <ParamField path="endLine" type="number" required>
+      End line (1-based)
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="encoding" type="string" default="utf-8">
+  Text encoding
+</ParamField>
+
+**Returns:**
+
+<ResponseField name="path" type="string">
+  Edited file path
+</ResponseField>
+
+<ResponseField name="editsApplied" type="string[]">
+  Descriptions of applied edits
+</ResponseField>
+
+<ResponseField name="totalEdits" type="number">
+  Total edits applied
+</ResponseField>
+
+<ResponseField name="originalLines" type="number">
+  Original line count
+</ResponseField>
+
+<ResponseField name="newLines" type="number">
+  New line count
+</ResponseField>
+
+<ResponseField name="diff" type="string">
+  Unified diff showing changes
+</ResponseField>
+
+**Example:**
+
+```typescript
+const editTools = fs.edit();
+const result = yield* editTools.execute.handler(
+  {
+    path: "src/main.ts",
+    edits: [
+      {
+        type: "replace_lines",
+        startLine: 5,
+        endLine: 10,
+        content: "// New implementation\nfunction newCode() {\n  return true;\n}",
+      },
+      {
+        type: "replace_pattern",
+        pattern: "oldVariable",
+        replacement: "newVariable",
+        count: -1, // Replace all
+      },
+    ],
+  },
+  context
+);
+```
+
+**Error types:**
+
+The tool returns structured errors for better handling:
+
+- `FileNotFoundError`: File doesn't exist
+- `FileReadError`: File exists but can't be read
+- `OutOfBoundsError`: Line range out of bounds
+- `InsertOutOfBoundsError`: Insert position out of bounds
+- `PatternNotFoundError`: Pattern not found in file
+- `InvalidPatternError`: Malformed regex pattern
+- `PatternTooComplexError`: Pattern too complex for find-and-replace
+- `RegexIterationLimitError`: Regex matched too many times
+
+### mkdir
+
+Create a directory.
+
+**Parameters:**
+
+<ParamField path="path" type="string" required>
+  Directory path to create
+</ParamField>
+
+<ParamField path="recursive" type="boolean" default={false}>
+  Create parent directories if needed
+</ParamField>
+
+### rm
+
+Remove files or directories.
+
+**Parameters:**
+
+<ParamField path="path" type="string" required>
+  File or directory path to remove
+</ParamField>
+
+<ParamField path="recursive" type="boolean" default={false}>
+  Remove directories recursively
+</ParamField>
+
+### mv
+
+Move or rename a file or directory.
+
+**Parameters:**
+
+<ParamField path="source" type="string" required>
+  Source path
+</ParamField>
+
+<ParamField path="destination" type="string" required>
+  Destination path
+</ParamField>
+
+### cp
+
+Copy a file or directory.
+
+**Parameters:**
+
+<ParamField path="source" type="string" required>
+  Source path
+</ParamField>
+
+<ParamField path="destination" type="string" required>
+  Destination path
+</ParamField>
+
+<ParamField path="recursive" type="boolean" default={false}>
+  Copy directories recursively
+</ParamField>
+
+## Best practices
+
+### Use the right search tool
+
+- **grep**: Search file **contents** for text or patterns
+- **find**: Search for files by **name**, path, or metadata
+
+### Prefer edit_file over write_file
+
+When modifying existing files:
+
+```typescript
+// Good: Modify specific parts
+edit_file({
+  path: "config.json",
+  edits: [{ type: "replace_pattern", pattern: "old", replacement: "new" }],
+});
+
+// Bad: Replace entire file
+const content = read_file({ path: "config.json" });
+const modified = content.replace("old", "new");
+write_file({ path: "config.json", content: modified });
+```
+
+### Use replace_lines for structural edits
+
+```typescript
+// Good: Replace specific lines
+{
+  type: "replace_lines",
+  startLine: 10,
+  endLine: 20,
+  content: "new code block"
+}
+
+// Bad: Complex pattern matching for structural changes
+{
+  type: "replace_pattern",
+  pattern: "re:function.*\\{[\\s\\S]*\\}",
+  replacement: "new function"
+}
+```
+
+### Respect resource limits
+
+Don't request more data than needed:
+
+```typescript
+// Good: Read specific line range
+read_file({ path: "large-file.txt", startLine: 100, endLine: 200 });
+
+// Bad: Read entire large file
+read_file({ path: "large-file.txt" });
+```

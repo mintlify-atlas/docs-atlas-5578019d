@@ -1,0 +1,364 @@
+---
+title: Creating agents
+description: Learn how to create and configure AI agents with custom tools, personas, and LLM models
+---
+
+Agents are the core of Jazz. Each agent is a configured AI assistant with its own persona, model, and tool access. You can create specialized agents for different tasks—a coding agent with Git and shell access, a research agent with web search, or a communication agent with email and calendar tools.
+
+## Creating your first agent
+
+<Steps>
+  <Step title="Start the agent wizard">
+    Run the interactive agent creation command:
+
+    ```bash
+    jazz agent create
+    ```
+
+    The wizard guides you through each configuration step with ESC-based back navigation.
+  </Step>
+
+  <Step title="Select an LLM provider">
+    Choose from supported providers:
+
+    - **Anthropic** (Claude models)
+    - **OpenAI** (GPT models)
+    - **Google** (Gemini models)
+    - **xAI** (Grok models)
+    - **OpenRouter** (access to hundreds of models)
+    - **Ollama** (local models)
+    - **DeepSeek**, **Mistral**, **Groq**, **Cerebras**, and more
+
+    If you haven't configured an API key yet, the wizard prompts you to enter one. Keys are saved to `~/.jazz/config.json`.
+
+    <Tip>
+      Use OpenRouter's [Free Models Router](https://openrouter.ai/openrouter/free) to get started without a credit card.
+    </Tip>
+  </Step>
+
+  <Step title="Choose a model">
+    Select which model the agent should use:
+
+    ```
+    Which model would you like to use?
+    ❯ claude-4.5-sonnet
+      claude-4.5-opus
+      claude-3-haiku
+      ...
+    ```
+
+    Models are searchable—just start typing to filter.
+
+    <Note>
+      Reasoning models (like OpenAI's o1/o3) show an additional "reasoning effort" step where you can set the effort level to low, medium, or high.
+    </Note>
+  </Step>
+
+  <Step title="Select a persona">
+    Personas define the agent's behavior and expertise. Built-in options:
+
+    - **default** - General-purpose assistant (requires description)
+    - **coder** - Software development specialist
+    - **researcher** - Research and analysis expert
+
+    Predefined personas (coder, researcher) automatically configure appropriate tool categories.
+  </Step>
+
+  <Step title="Name your agent">
+    Provide a unique name:
+
+    ```
+    Name of your new agent: my-coding-assistant
+    ```
+
+    Valid characters: letters, numbers, underscores, hyphens. Maximum 100 characters.
+  </Step>
+
+  <Step title="Describe the agent (optional)">
+    If you selected the "default" persona, provide a description:
+
+    ```
+    Describe what this agent will do: Helps with TypeScript development and code reviews
+    ```
+
+    This description helps you identify the agent's purpose later.
+  </Step>
+
+  <Step title="Configure tools">
+    Select which tool categories the agent can access:
+
+    **File Management**
+    - Read, write, edit files
+    - Search file contents
+    - Directory operations
+
+    **Shell Commands**
+    - Execute terminal commands
+    - Run scripts
+    - System operations
+
+    **Git**
+    - Status, diff, log
+    - Commit, push, pull
+    - Branch management
+
+    **HTTP**
+    - Make API requests
+    - Fetch web resources
+
+    **Web Search**
+    - Search the web
+    - Research information
+
+    **MCP Servers** (if configured)
+    - Any enabled MCP server tools appear here
+
+    <Note>
+      If the selected model doesn't support tools (like some reasoning models), tool selection is skipped.
+    </Note>
+  </Step>
+</Steps>
+
+## Agent configuration
+
+Agents are stored in `~/.jazz/agents/` with this structure:
+
+```json
+{
+  "id": "my-coding-assistant",
+  "name": "my-coding-assistant",
+  "description": "Helps with TypeScript development",
+  "config": {
+    "persona": "coder",
+    "llmProvider": "anthropic",
+    "llmModel": "claude-4.5-sonnet",
+    "tools": [
+      "read_file",
+      "write_file",
+      "edit_file",
+      "bash",
+      "git_status",
+      "git_diff",
+      "git_commit"
+    ]
+  },
+  "createdAt": "2024-01-15T10:30:00Z",
+  "updatedAt": "2024-01-15T10:30:00Z"
+}
+```
+
+### Configuration options
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `persona` | string | Behavior profile (default, coder, researcher) |
+| `llmProvider` | string | LLM provider name |
+| `llmModel` | string | Specific model ID |
+| `reasoningEffort` | string | For reasoning models: disable, low, medium, high |
+| `tools` | string[] | List of tool names the agent can use |
+
+## Predefined agent types
+
+Jazz includes two predefined agent configurations:
+
+### Coder agent
+
+Optimized for software development:
+
+- **Tools**: File Management, Shell Commands, Git, HTTP, Web Search
+- **Use cases**: Code reviews, refactoring, debugging, feature implementation
+- **Example**: `jazz agent create` → select "coder" persona
+
+### Researcher agent
+
+Designed for information gathering and analysis:
+
+- **Tools**: Web Search, HTTP, File Management, Shell Commands
+- **Use cases**: Market research, technical documentation, competitive analysis
+- **Example**: `jazz agent create` → select "researcher" persona
+
+## Managing agents
+
+### List all agents
+
+```bash
+jazz agent list
+```
+
+Shows all configured agents with their models and creation dates.
+
+### Chat with an agent
+
+```bash
+# By name
+jazz agent chat my-coding-assistant
+
+# By ID
+jazz agent chat abc123
+
+# Interactive selection
+jazz
+```
+
+### Delete an agent
+
+```bash
+jazz agent delete my-coding-assistant
+```
+
+## Tool categories explained
+
+<Accordion title="File Management">
+  Tools for reading, writing, and manipulating files:
+
+  - `read_file` - Read file contents
+  - `write_file` - Create or overwrite files
+  - `edit_file` - Make targeted edits
+  - `glob` - Find files by pattern
+  - `grep` - Search file contents
+
+  Source: `src/core/agent/tools/register-tools.ts:10-30`
+</Accordion>
+
+<Accordion title="Shell Commands">
+  Execute terminal commands:
+
+  - `bash` - Run shell commands
+  - `execute_command` - Execute with timeout and error handling
+
+  <Warning>
+    Shell commands require approval by default. Use with caution.
+  </Warning>
+</Accordion>
+
+<Accordion title="Git">
+  Version control operations:
+
+  - `git_status` - Show working tree status
+  - `git_diff` - Show changes
+  - `git_log` - View commit history
+  - `git_commit` - Commit changes
+  - `git_push` - Push to remote
+  - `git_branch` - Branch management
+
+  Source: `src/core/agent/tools/register-tools.ts:12`
+</Accordion>
+
+<Accordion title="HTTP">
+  Make HTTP requests:
+
+  - `http_request` - GET, POST, PUT, DELETE requests
+  - Supports headers, query parameters, request bodies
+  - Automatic JSON parsing
+
+  Source: `src/core/agent/tools/register-tools.ts:13`
+</Accordion>
+
+<Accordion title="Web Search">
+  Search the web for information:
+
+  - Configurable search provider (Tavily, Perplexity, Brave)
+  - Returns ranked results with snippets
+  - Automatic source attribution
+
+  Configuration in `jazz.config.json`:
+
+  ```json
+  {
+    "web_search": {
+      "provider": "tavily",
+      "api_key": "your-key"
+    }
+  }
+  ```
+</Accordion>
+
+## Advanced: Custom tool selection
+
+For fine-grained control, edit the agent JSON file directly:
+
+```json
+{
+  "config": {
+    "tools": [
+      "read_file",
+      "write_file",
+      "git_status",
+      "git_diff",
+      "http_request"
+    ]
+  }
+}
+```
+
+Restart Jazz to load changes:
+
+```bash
+jazz agent chat my-agent
+```
+
+## Best practices
+
+<Tip>
+  **Start narrow, expand as needed** - Begin with minimal tool access and add more as you discover use cases.
+</Tip>
+
+<Tip>
+  **Use personas for consistency** - Predefined personas ensure agents have appropriate tools for their domain.
+</Tip>
+
+<Tip>
+  **Name agents by function** - Use descriptive names like `code-reviewer`, `email-assistant`, or `research-bot`.
+</Tip>
+
+<Warning>
+  **Review shell command access** - Agents with shell access can execute arbitrary commands. Only enable for trusted workflows.
+</Warning>
+
+## Examples
+
+### Code review agent
+
+```bash
+jazz agent create
+```
+
+1. Provider: `anthropic`
+2. Model: `claude-4.5-sonnet`
+3. Persona: `coder`
+4. Name: `code-reviewer`
+5. Tools: File Management, Git (no shell commands)
+
+### Research agent with web access
+
+```bash
+jazz agent create
+```
+
+1. Provider: `openrouter`
+2. Model: `anthropic/claude-4.5-sonnet`
+3. Persona: `researcher`
+4. Name: `web-researcher`
+5. Tools: Web Search, HTTP, File Management
+
+### Email automation agent
+
+```bash
+jazz agent create
+```
+
+1. Provider: `openai`
+2. Model: `gpt-4`
+3. Persona: `default`
+4. Description: `Manages email triage and responses`
+5. Tools: Email (via MCP), File Management
+
+<Note>
+  Email tools require MCP server configuration. See the [MCP integration guide](/guides/mcp-integration).
+</Note>
+
+## Next steps
+
+- [Using skills](/guides/using-skills) - Extend agents with packaged expertise
+- [MCP integration](/guides/mcp-integration) - Connect to external services
+- [Workflows](/guides/workflows) - Automate agents with scheduled tasks

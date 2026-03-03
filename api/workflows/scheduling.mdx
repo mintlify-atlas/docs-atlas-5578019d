@@ -1,0 +1,488 @@
+---
+title: Workflow scheduling
+description: Cron expressions, auto-approve policies, and system scheduler configuration
+---
+
+Workflows use your system's native scheduler to run automatically at specified times. This page explains how to configure scheduling, auto-approve policies, and handle missed runs.
+
+## Cron schedule format
+
+Workflows use standard 5-field cron expressions:
+
+```
+minute hour day-of-month month day-of-week
+```
+
+Each field can be:
+- `*` (any value)
+- A specific number (e.g., `5`)
+- A list (e.g., `1,15,30`)
+- A range (e.g., `1-5`)
+- A step value (e.g., `*/15`)
+
+### Common schedules
+
+| Expression | Description |
+| --- | --- |
+| `0 * * * *` | Every hour at minute 0 |
+| `0 8 * * *` | Daily at 8:00 AM |
+| `*/15 * * * *` | Every 15 minutes |
+| `0 9 * * 1` | Every Monday at 9:00 AM |
+| `0 0 1 * *` | First day of every month at midnight |
+| `0 9 * * 1-5` | Weekdays at 9:00 AM |
+| `30 7 * * 6,0` | Weekends at 7:30 AM |
+
+### Examples with context
+
+```yaml Email cleanup (hourly)
+schedule: "0 * * * *"
+```
+
+```yaml Morning briefing (weekdays)
+schedule: "0 7 * * 1-5"
+```
+
+```yaml Weekly report (Mondays)
+schedule: "0 9 * * 1"
+```
+
+```yaml Quick check (every 15 minutes)
+schedule: "*/15 * * * *"
+```
+
+<Note>
+  Always wrap cron expressions in quotes in YAML to prevent parsing issues.
+</Note>
+
+## System schedulers
+
+Jazz uses your operating system's native scheduler:
+
+### macOS (launchd)
+
+On macOS, Jazz creates a plist file in `~/Library/LaunchAgents/`:
+
+```bash
+~/Library/LaunchAgents/com.jazz.workflow.<name>.plist
+```
+
+You can view scheduled workflows with:
+
+```bash
+launchctl list | grep jazz
+```
+
+Logs are written to:
+
+```bash
+~/.jazz/logs/<workflow-name>.log
+```
+
+#### Run on login (macOS)
+
+When scheduling a workflow on macOS, Jazz asks if you want to run it on login. This helps catch missed runs when your Mac was asleep:
+
+```bash
+$ jazz workflow schedule my-workflow
+...
+Run on login? (catches missed runs when your Mac was asleep) (y/n): y
+```
+
+This uses launchd's `RunAtLoad` feature to execute the workflow when you log in, in addition to the regular schedule.
+
+### Linux (cron)
+
+On Linux, Jazz adds an entry to your user crontab:
+
+```bash
+crontab -l | grep jazz
+```
+
+Logs are written to:
+
+```bash
+~/.jazz/logs/<workflow-name>.log
+```
+
+### Schedule metadata
+
+Jazz stores schedule metadata in:
+
+```bash
+~/.jazz/schedules/<workflow-name>.json
+```
+
+This includes:
+- The agent ID to use for scheduled runs
+- The timestamp when the workflow was scheduled
+- RunAtLoad preference (macOS)
+
+<Warning>
+  Scheduled workflows only run if your computer is powered on and awake at the scheduled time. If your computer is asleep, closed, or off, those runs are skipped.
+</Warning>
+
+## Auto-approve policies
+
+Auto-approve policies control which tools can execute without user confirmation during scheduled runs. This allows workflows to run unattended while maintaining safety.
+
+### Policy levels
+
+<ParamField path="false" type="boolean">
+  Always prompt for approval. The workflow will pause and wait for user input.
+  
+  **Use for**: Interactive workflows where you want to review every action.
+  
+  ```yaml
+  autoApprove: false
+  ```
+</ParamField>
+
+<ParamField path="read-only" type="string">
+  Auto-approve read-only tools only. The agent can search, read files, and fetch data without approval.
+  
+  **Auto-approved tools**: `web_search`, `read_file`, `list_emails`, `get_calendar`
+  
+  **Still requires approval**: Writing files, sending emails, executing commands
+  
+  **Use for**: Research and monitoring workflows
+  
+  ```yaml
+  autoApprove: read-only
+  ```
+</ParamField>
+
+<ParamField path="low-risk" type="string">
+  Auto-approve read-only tools plus low-risk write operations. The agent can archive emails, create calendar events, and label items.
+  
+  **Auto-approved tools**: All read-only tools plus `archive_email`, `create_calendar_event`, `label_email`
+  
+  **Still requires approval**: Deleting files, sending emails, executing shell commands, git push
+  
+  **Use for**: Email management, calendar automation
+  
+  ```yaml
+  autoApprove: low-risk
+  ```
+</ParamField>
+
+<ParamField path="high-risk" type="string">
+  Auto-approve all tools, including high-risk operations. The agent can delete files, send emails, execute commands, and push to git.
+  
+  **Auto-approved tools**: Everything
+  
+  **Use for**: Fully trusted automation with explicit safety guidelines in the prompt
+  
+  ```yaml
+  autoApprove: high-risk
+  ```
+</ParamField>
+
+<ParamField path="true" type="boolean">
+  Same as `high-risk`. Auto-approve all tools.
+  
+  ```yaml
+  autoApprove: true
+  ```
+</ParamField>
+
+### Tool risk categories
+
+Tools are categorized by their potential impact:
+
+**Read-only tools**:
+- `web_search`
+- `read_file`
+- `list_emails`
+- `get_calendar`
+- `git_diff`
+- `git_log`
+
+**Low-risk tools**:
+- `archive_email`
+- `create_calendar_event`
+- `label_email`
+- `create_directory`
+
+**High-risk tools**:
+- `delete_file`
+- `send_email`
+- `execute_command`
+- `git_push`
+- `git_commit`
+- `write_file` (with destructive changes)
+
+### Choosing the right policy
+
+<Steps>
+  <Step title="Start conservative">
+    Begin with `read-only` or `low-risk` for new workflows. Test manually before increasing permissions.
+  </Step>
+  
+  <Step title="Match policy to workflow purpose">
+    - Research/monitoring: `read-only`
+    - Email cleanup: `low-risk`
+    - Code deployment: `high-risk` (with extreme caution)
+  </Step>
+  
+  <Step title="Add safety guidelines">
+    Even with high permissions, include explicit safety rules in your workflow prompt:
+    
+    ```markdown
+    **Safety Rules:**
+    - When in doubt, DO NOTHING
+    - Only perform actions you're 100% confident about
+    - Leave uncertain items for manual review
+    ```
+  </Step>
+  
+  <Step title="Monitor and adjust">
+    Check logs after scheduled runs. If the workflow is too cautious or too aggressive, adjust the policy.
+  </Step>
+</Steps>
+
+## Catch-up behavior
+
+System schedulers (launchd, cron) only run jobs when the machine is awake. If your computer was asleep at the scheduled time, that run is skipped.
+
+Jazz provides a catch-up feature to handle missed runs:
+
+### Enabling catch-up
+
+```yaml
+---
+name: market-analysis
+schedule: "0 6 * * *"
+catchUpOnStartup: true
+maxCatchUpAge: 43200  # 12 hours in seconds
+---
+```
+
+<ParamField path="catchUpOnStartup" type="boolean">
+  When `true`, Jazz will check for missed runs when you start any Jazz command.
+</ParamField>
+
+<ParamField path="maxCatchUpAge" type="number">
+  Maximum age (in seconds) for catch-up runs. Missed runs older than this won't be caught up.
+  
+  Common values:
+  - `3600` - 1 hour
+  - `21600` - 6 hours
+  - `43200` - 12 hours
+  - `86400` - 24 hours
+</ParamField>
+
+### How catch-up works
+
+When you run any Jazz command (e.g., `jazz chat`, `jazz workflow list`), Jazz checks if any workflows:
+
+1. Are scheduled
+2. Have `catchUpOnStartup: true`
+3. Missed their last scheduled run
+4. Are within the `maxCatchUpAge` window
+
+If any workflows meet these criteria, you'll see:
+
+```bash
+$ jazz chat
+⚠️  2 workflows need to catch up:
+   • market-analysis (missed 6:00 AM today)
+   • tech-digest (missed 8:00 AM today)
+
+Would you like to catch them up? (y/n): y
+
+Select workflows to catch up:
+  [x] market-analysis
+  [x] tech-digest
+
+Running selected workflows in background...
+Starting chat session...
+```
+
+You can select which workflows to run (use Space to toggle, Enter to confirm). The selected workflows run in the background while you continue with your original command.
+
+### Manual catch-up
+
+You can also run catch-up manually:
+
+```bash
+jazz workflow catchup
+```
+
+This lists all workflows that need catch-up, lets you select which to run, and executes them.
+
+## Scheduling commands
+
+### Schedule a workflow
+
+```bash
+jazz workflow schedule <name>
+```
+
+This will:
+1. Verify the workflow has a `schedule` field
+2. Prompt you to select an agent (if not specified in the workflow)
+3. On macOS, ask if you want to run on login
+4. Create the system scheduler entry
+5. Save schedule metadata
+
+Example output:
+
+```bash
+$ jazz workflow schedule email-cleanup
+⏰ Scheduling workflow: email-cleanup
+
+Using agent: my-agent
+
+Run on login? (catches missed runs when your Mac was asleep) (y/n): y
+
+✓ Workflow 'email-cleanup' scheduled successfully!
+
+  Schedule: 0 * * * *
+  Agent: my-agent
+  Scheduler: launchd
+  Run on login: yes
+
+ℹ Auto-approve policy: low-risk
+ℹ Logs will be written to: ~/.jazz/logs/
+ℹ To unschedule: jazz workflow unschedule email-cleanup
+```
+
+### List scheduled workflows
+
+```bash
+jazz workflow scheduled
+```
+
+Example output:
+
+```bash
+⏰ Scheduled Workflows
+
+Scheduler: launchd
+
+  email-cleanup (Every hour) agent: my-agent ✓ enabled
+  tech-digest (Daily at 8:00 AM) agent: research-bot ✓ enabled
+  market-analysis (Daily at 6:00 AM) agent: market-bot ✓ enabled
+
+ℹ Total: 3 scheduled workflow(s)
+```
+
+### Unschedule a workflow
+
+```bash
+jazz workflow unschedule <name>
+```
+
+This removes the workflow from the scheduler but doesn't delete the workflow file.
+
+### View run history
+
+```bash
+jazz workflow history [name]
+```
+
+Without a name, shows all recent runs. With a name, filters to that workflow:
+
+```bash
+$ jazz workflow history email-cleanup
+📜 Run History: email-cleanup
+
+  ✓ email-cleanup (scheduled) - completed (12s)
+    Started: 2026-03-03T10:00:01.234Z
+
+  ✓ email-cleanup (scheduled) - completed (8s)
+    Started: 2026-03-03T09:00:01.123Z
+
+  ✗ email-cleanup (scheduled) - failed (3s)
+    Started: 2026-03-03T08:00:01.456Z
+    Error: Agent 'my-agent' not found
+
+ℹ Showing 3 most recent run(s)
+```
+
+## Troubleshooting
+
+### Workflow not running
+
+<Steps>
+  <Step title="Check if it's scheduled">
+    ```bash
+    jazz workflow scheduled
+    ```
+  </Step>
+  
+  <Step title="Verify the agent exists">
+    ```bash
+    jazz agent list
+    ```
+    
+    The agent must exist when the workflow runs. If you delete an agent used by a scheduled workflow, runs will fail.
+  </Step>
+  
+  <Step title="Check logs">
+    ```bash
+    tail -f ~/.jazz/logs/<workflow-name>.log
+    ```
+  </Step>
+  
+  <Step title="Check system scheduler">
+    **macOS**:
+    ```bash
+    launchctl list | grep jazz
+    ```
+    
+    **Linux**:
+    ```bash
+    crontab -l | grep jazz
+    ```
+  </Step>
+</Steps>
+
+### Agent not found during scheduled run
+
+The agent must exist when the workflow runs. Update the schedule with a new agent:
+
+```bash
+jazz workflow unschedule my-workflow
+jazz workflow schedule my-workflow
+# Select a different agent
+```
+
+### Workflow asks for approval despite autoApprove
+
+Make sure you're using `--auto-approve` when running manually:
+
+```bash
+jazz workflow run my-workflow --auto-approve
+```
+
+For scheduled runs, auto-approve is automatically enabled based on the workflow's `autoApprove` setting.
+
+### Computer was asleep, runs were missed
+
+Enable catch-up to handle missed runs:
+
+```yaml
+---
+catchUpOnStartup: true
+maxCatchUpAge: 43200  # 12 hours
+---
+```
+
+Alternatively:
+- Keep your computer awake during scheduled times
+- Run Jazz on an always-on device (server, cloud VM, Raspberry Pi)
+- Schedule workflows when you know your computer will be on
+- Run manually when needed: `jazz workflow run <name>`
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Workflow overview" icon="book" href="/api/workflows/overview">
+    Learn about workflow basics and built-in workflows
+  </Card>
+  
+  <Card title="File structure" icon="file-code" href="/api/workflows/structure">
+    Understand YAML frontmatter and content format
+  </Card>
+</CardGroup>

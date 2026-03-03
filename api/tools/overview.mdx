@@ -1,0 +1,196 @@
+---
+title: Tools overview
+description: Comprehensive guide to Jazz's tool system for AI agents
+---
+
+Jazz provides a rich ecosystem of tools that enable AI agents to interact with filesystems, version control, shell commands, web search, HTTP APIs, and Model Context Protocol (MCP) servers.
+
+## Tool categories
+
+Tools are organized into functional categories:
+
+- **[Filesystem](/api/tools/filesystem)** - Read, write, search, and manipulate files and directories
+- **[Git](/api/tools/git)** - Version control operations (status, commit, diff, log, etc.)
+- **[Shell](/api/tools/shell)** - Execute arbitrary shell commands with safety checks
+- **[Web search](/api/tools/web-search)** - Search the web using multiple providers (Brave, Perplexity, Exa, etc.)
+- **[HTTP](/api/tools/http)** - Make HTTP requests with full control over method, headers, and body
+- **[MCP](/api/tools/mcp)** - Connect to Model Context Protocol servers and use their tools
+
+## Tool architecture
+
+All tools in Jazz follow a consistent architecture:
+
+### Base tool types
+
+There are two types of tools:
+
+1. **Standard tools** - Execute immediately when called
+2. **Approval tools** - Require user confirmation before execution
+
+### Approval tools
+
+Approval tools are used for operations that modify state or have security implications. They consist of two parts:
+
+- **Approval request** - Shows the user what will happen and waits for confirmation
+- **Execution** - Performs the actual operation after approval
+
+Examples of approval tools:
+- File write operations (`write_file`, `edit_file`)
+- Git modifications (`git_add`, `git_commit`, `git_push`)
+- Shell command execution (`execute_command`)
+
+### Tool validation
+
+All tools use Zod schemas for parameter validation, ensuring:
+
+- Type safety at runtime
+- Clear error messages for invalid inputs
+- Automatic parameter documentation
+
+### Effect-based execution
+
+Tools are built using [Effect-TS](https://effect.website/), providing:
+
+- Composable error handling
+- Dependency injection
+- Type-safe side effects
+- Testability
+
+## Tool naming conventions
+
+Jazz uses consistent naming patterns:
+
+- Filesystem tools use action names: `read_file`, `write_file`, `ls`, `grep`, `find`
+- Git tools are prefixed: `git_status`, `git_commit`, `git_diff`
+- Shell tool: `execute_command`
+- Web search: `web_search`
+- HTTP: `http_request`
+- MCP tools are prefixed with server name: `mcp_<server>_<tool>`
+
+## Security features
+
+### Input validation
+
+All parameters are validated using strict Zod schemas:
+
+```typescript
+const parameters = z
+  .object({
+    path: z.string().min(1).describe("File path to read"),
+    startLine: z.number().int().positive().optional(),
+    endLine: z.number().int().positive().optional(),
+  })
+  .strict();
+```
+
+### Command filtering
+
+Shell commands are filtered to prevent dangerous operations:
+
+- System modification (`rm -rf`, `sudo`, `shutdown`)
+- Code execution via pipes (`curl | bash`)
+- Process manipulation (`kill -9`, `pkill`)
+- File permission changes (`chmod 777`)
+
+### Path resolution
+
+All file paths are resolved and validated to prevent:
+
+- Path traversal attacks
+- Access outside working directory
+- Symlink exploitation
+
+## Resource limits
+
+Tools enforce sensible limits to prevent resource exhaustion:
+
+- **File reads**: Max 512KB per read
+- **Search results**: Default 200, cap 2000
+- **Diff output**: Default 500 lines, cap 2000
+- **Command timeout**: Default 15 minutes
+- **HTTP timeout**: Default 15 seconds
+- **HTTP response size**: Default 1MB, cap 5MB
+
+## Error handling
+
+Tools use tagged errors for structured error reporting:
+
+```typescript
+export class FileNotFoundError extends Data.TaggedError("FileNotFoundError")<{
+  readonly path: string;
+}> {
+  override get message() {
+    return `File does not exist: ${this.path}`;
+  }
+}
+```
+
+This enables:
+
+- Programmatic error discrimination
+- Type-safe error matching
+- Rich error context
+- Actionable error messages
+
+## Tool registration
+
+Tools are registered with the agent's tool registry:
+
+```typescript
+import { fs } from "./tools/fs";
+import { git } from "./tools/git";
+
+// Register read-only tools
+yield* registerTool(fs.read());
+yield* registerTool(git.status());
+
+// Register approval tools (both approval and execute)
+const writeTools = fs.write();
+yield* registerTool(writeTools.approval);
+yield* registerTool(writeTools.execute);
+```
+
+## Creating custom tools
+
+You can create custom tools using the `defineTool` and `defineApprovalTool` helpers:
+
+```typescript
+import { defineTool } from "@/core/agent/tools/base-tool";
+import { z } from "zod";
+
+export function createMyTool() {
+  return defineTool({
+    name: "my_tool",
+    description: "Does something useful",
+    tags: ["custom"],
+    parameters: z.object({
+      input: z.string().describe("Input parameter"),
+    }).strict(),
+    handler: (args, context) =>
+      Effect.gen(function* () {
+        // Tool implementation
+        return {
+          success: true,
+          result: { output: "result" },
+        };
+      }),
+  });
+}
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Filesystem tools" icon="folder" href="/api/tools/filesystem">
+    Read, write, and search files
+  </Card>
+  <Card title="Git tools" icon="git-alt" href="/api/tools/git">
+    Version control operations
+  </Card>
+  <Card title="Shell tools" icon="terminal" href="/api/tools/shell">
+    Execute shell commands
+  </Card>
+  <Card title="Web search tools" icon="magnifying-glass" href="/api/tools/web-search">
+    Search the web
+  </Card>
+</CardGroup>

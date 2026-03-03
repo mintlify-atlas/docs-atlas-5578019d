@@ -1,0 +1,221 @@
+---
+title: Config commands
+description: View and modify Jazz configuration settings
+---
+
+Configuration commands let you view and modify Jazz's global and project-specific settings.
+
+## jazz config show
+
+Display all configuration values.
+
+```bash
+jazz config show
+```
+
+Shows the complete merged configuration including:
+- Global settings from `~/.jazz/jazz.config.json`
+- Project settings from `./jazz.config.json`
+- Environment variable overrides
+
+Configuration is displayed in a formatted, hierarchical view.
+
+## jazz config get
+
+Retrieve a specific configuration value.
+
+```bash
+jazz config get <key>
+```
+
+**Arguments:**
+
+<ParamField path="key" type="string" required>
+  Configuration key in dot notation (e.g., `llm.defaultProvider`)
+</ParamField>
+
+### Examples
+
+```bash
+# Get the default LLM provider
+jazz config get llm.defaultProvider
+
+# Get verbose logging setting
+jazz config get logging.verbose
+
+# Get MCP server configuration
+jazz config get mcpServers.github
+```
+
+## jazz config set
+
+Set a configuration value.
+
+```bash
+jazz config set <key> [value]
+```
+
+**Arguments:**
+
+<ParamField path="key" type="string" required>
+  Configuration key in dot notation
+</ParamField>
+
+<ParamField path="value" type="string">
+  Value to set (if omitted, opens an interactive editor)
+</ParamField>
+
+### Examples
+
+```bash
+# Set default LLM provider
+jazz config set llm.defaultProvider openai
+
+# Enable verbose logging
+jazz config set logging.verbose true
+
+# Set API key (interactive)
+jazz config set llm.providers.openai.apiKey
+```
+
+<Info>Boolean values can be set as `true`/`false`, numbers as plain digits, and strings as plain text.</Info>
+
+## Configuration structure
+
+Jazz configuration is organized into these sections:
+
+### LLM providers
+
+```json
+{
+  "llm": {
+    "defaultProvider": "openai",
+    "providers": {
+      "openai": {
+        "apiKey": "sk-...",
+        "defaultModel": "gpt-4o-2024-08-06"
+      },
+      "anthropic": {
+        "apiKey": "sk-ant-...",
+        "defaultModel": "claude-3-5-sonnet-20241022"
+      }
+    }
+  }
+}
+```
+
+### MCP servers
+
+```json
+{
+  "mcpServers": {
+    "github": {
+      "enabled": true
+    },
+    "notion": {
+      "enabled": false
+    }
+  }
+}
+```
+
+### Logging
+
+```json
+{
+  "logging": {
+    "level": "info",
+    "verbose": false,
+    "file": "~/.jazz/logs/jazz.log"
+  }
+}
+```
+
+### Storage
+
+```json
+{
+  "storage": {
+    "agentsPath": "~/.jazz/agents",
+    "workflowsPath": "~/.jazz/workflows",
+    "skillsPath": "~/.jazz/skills"
+  }
+}
+```
+
+## Configuration file locations
+
+Jazz merges configuration from multiple locations (in order of precedence):
+
+1. **Environment variables** (highest priority)
+   - `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, etc.
+   - `JAZZ_CONFIG_PATH` - Override config file location
+
+2. **Project configuration**
+   - `./jazz.config.json` in current directory
+   - Overrides global settings for this project
+
+3. **Global configuration** (lowest priority)
+   - `~/.jazz/jazz.config.json`
+   - Default settings for all Jazz usage
+
+## Configuration wizard
+
+For first-time setup, Jazz provides an interactive configuration wizard:
+
+```bash
+jazz
+```
+
+The wizard will:
+1. Detect which LLM providers you have API keys for
+2. Help you configure your preferred provider
+3. Test the connection
+4. Save the configuration
+
+## Examples
+
+### View all configuration
+
+```bash
+jazz config show
+```
+
+### Get OpenAI model
+
+```bash
+jazz config get llm.providers.openai.defaultModel
+# Output: gpt-4o-2024-08-06
+```
+
+### Set Anthropic API key
+
+```bash
+jazz config set llm.providers.anthropic.apiKey sk-ant-your-key
+```
+
+### Check verbose logging
+
+```bash
+jazz config get logging.verbose
+# Output: false
+```
+
+## Tips
+
+<Tip>Use project-specific `./jazz.config.json` files to override settings for different projects or teams.</Tip>
+
+<Tip>Store API keys in environment variables for better security, especially in shared environments.</Tip>
+
+<Warning>Never commit `jazz.config.json` files with API keys to version control. Add them to `.gitignore`.</Warning>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration guide" icon="gear" href="/guides/configuration">
+    Learn about advanced configuration options
+  </Card>
+  <Card title="LLM providers" icon="brain" href="/guides/llm-providers">
+    Configure different LLM providers
+  </Card>
+</CardGroup>

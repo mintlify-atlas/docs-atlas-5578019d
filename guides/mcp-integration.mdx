@@ -1,0 +1,643 @@
+---
+title: MCP integration
+description: Connect your agents to external services using the Model Context Protocol
+---
+
+The Model Context Protocol (MCP) lets your agents connect to external services—Notion, GitHub, Slack, databases, APIs—with a single configuration block. Instead of building custom integrations for every service, MCP provides a standard interface agents already understand.
+
+## What is MCP?
+
+[Model Context Protocol](https://modelcontextprotocol.io/) is an open protocol for AI-tool integration. Services expose capabilities (like reading Notion pages or creating GitHub issues) through MCP servers, and agents consume them through a unified interface.
+
+**Benefits:**
+
+- **One config, many services** - Add any MCP-compatible service with JSON config
+- **No code required** - Agents discover tools automatically
+- **Ecosystem growth** - Hundreds of MCP servers already exist
+- **Standard interface** - Consistent behavior across all services
+
+## Quick start
+
+Add an MCP server in three ways:
+
+<CodeGroup>
+```bash Interactive
+# Opens your editor with a template
+jazz mcp add
+```
+
+```bash From file
+jazz mcp add --file server.json
+```
+
+```bash From clipboard
+pbpaste | jazz mcp add
+```
+</CodeGroup>
+
+## MCP server configuration
+
+### stdio servers
+
+Most MCP servers use stdio (stdin/stdout) transport:
+
+```json
+{
+  "github": {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-github"],
+    "env": {
+      "GITHUB_TOKEN": "ghp_your_token_here"
+    }
+  }
+}
+```
+
+### HTTP servers
+
+Some services use HTTP transport:
+
+```json
+{
+  "notion": {
+    "transport": "http",
+    "url": "https://mcp.notion.com/mcp",
+    "headers": {
+      "Authorization": "Bearer your_token_here"
+    }
+  }
+}
+```
+
+Source: mcp.ts:14-28
+
+## Adding MCP servers
+
+<Steps>
+  <Step title="Add the server configuration">
+    Run the add command:
+
+    ```bash
+    jazz mcp add
+    ```
+
+    Your editor opens with a template:
+
+    ```json
+    {
+      "server-name": {
+        "command": "your-command",
+        "args": []
+      }
+    }
+    ```
+
+    Source: mcp.ts:106-184
+  </Step>
+
+  <Step title="Fill in the server details">
+    Replace the template with actual server configuration:
+
+    ```json
+    {
+      "github": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-github"],
+        "env": {
+          "GITHUB_TOKEN": "ghp_your_token_here"
+        }
+      },
+      "notion": {
+        "command": "npx",
+        "args": ["-y", "mcp-remote", "https://mcp.notion.com/mcp"]
+      }
+    }
+    ```
+  </Step>
+
+  <Step title="Save and close your editor">
+    Jazz validates the configuration and adds the servers:
+
+    ```
+    ✓ Added MCP server: github
+    ✓ Added MCP server: notion
+    ```
+
+    Source: mcp.ts:36-79
+  </Step>
+
+  <Step title="Verify servers are available">
+    List configured servers:
+
+    ```bash
+    jazz mcp list
+    ```
+
+    Output:
+
+    ```
+    MCP Servers
+
+      github (stdio: npx) [enabled]
+      notion (stdio: npx) [enabled]
+    ```
+
+    Source: mcp.ts:192-220
+  </Step>
+</Steps>
+
+## Using MCP tools in agents
+
+When creating agents, MCP server tools appear as selectable categories:
+
+```bash
+jazz agent create
+```
+
+```
+Which tools should this agent have access to?
+
+  ◯ File Management (8 tools)
+  ◯ Git (12 tools)
+  ◯ HTTP (3 tools)
+  ◯ Shell Commands (2 tools)
+❯ ◉ GitHub (MCP) (15 tools)
+  ◉ Notion (MCP) (8 tools)
+```
+
+The agent automatically discovers all tools from selected MCP servers.
+
+Source: create-agent.ts:132-142, 179-281
+
+## Managing MCP servers
+
+### List servers
+
+```bash
+jazz mcp list
+```
+
+Shows all configured servers with transport type and status:
+
+```
+MCP Servers
+
+  github (stdio: npx) [enabled]
+  notion (http) [enabled]
+  slack (stdio: node) [disabled]
+```
+
+### Remove a server
+
+```bash
+jazz mcp remove
+```
+
+Interactive selection:
+
+```
+Select a server to remove:
+❯ github
+  notion
+  slack
+
+Remove server "github"? (y/N)
+```
+
+Source: mcp.ts:228-281
+
+### Enable/disable servers
+
+Disable a server without removing it:
+
+```bash
+jazz mcp disable
+```
+
+Re-enable later:
+
+```bash
+jazz mcp enable
+```
+
+Source: mcp.ts:288-357
+
+## Configuration storage
+
+MCP configurations are stored in two places:
+
+### Server definitions: `~/.agents/mcp.json`
+
+Full server configuration (command, args, environment):
+
+```json
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "ghp_..."
+      }
+    }
+  }
+}
+```
+
+### Enable/disable overrides: `jazz.config.json`
+
+Only stores enabled/disabled state:
+
+```json
+{
+  "mcpServers": {
+    "github": { "enabled": true },
+    "slack": { "enabled": false }
+  }
+}
+```
+
+This separation allows:
+
+- **User-level definitions** in `~/.agents/mcp.json` (shared across projects)
+- **Project-level overrides** in `jazz.config.json` (disable servers for specific projects)
+
+Source: config.ts:445-518
+
+## Popular MCP servers
+
+### GitHub
+
+Manage repositories, issues, PRs:
+
+```json
+{
+  "github": {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-github"],
+    "env": {
+      "GITHUB_TOKEN": "ghp_your_token"
+    }
+  }
+}
+```
+
+**Tools:** create issues, comment on PRs, search code, manage branches
+
+### Notion
+
+Read and write Notion pages:
+
+```json
+{
+  "notion": {
+    "command": "npx",
+    "args": ["-y", "mcp-remote", "https://mcp.notion.com/mcp"]
+  }
+}
+```
+
+**Tools:** read pages, create pages, update content, search
+
+### Slack
+
+Send messages, read channels:
+
+```json
+{
+  "slack": {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-slack"],
+    "env": {
+      "SLACK_BOT_TOKEN": "xoxb-your-token"
+    }
+  }
+}
+```
+
+**Tools:** post messages, list channels, read history
+
+### Database servers
+
+**PostgreSQL:**
+
+```json
+{
+  "postgres": {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-postgres"],
+    "env": {
+      "DATABASE_URL": "postgresql://user:pass@localhost/db"
+    }
+  }
+}
+```
+
+**SQLite:**
+
+```json
+{
+  "sqlite": {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-sqlite", "--db-path", "/path/to/db.sqlite"]
+  }
+}
+```
+
+## Authentication patterns
+
+### Environment variables
+
+Most common for API tokens:
+
+```json
+{
+  "service": {
+    "command": "npx",
+    "args": ["-y", "mcp-server-name"],
+    "env": {
+      "API_KEY": "your-key-here",
+      "API_SECRET": "your-secret"
+    }
+  }
+}
+```
+
+### Command arguments
+
+For file paths or config:
+
+```json
+{
+  "service": {
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-server-name",
+      "--token-file",
+      "/path/to/token.txt"
+    ]
+  }
+}
+```
+
+### HTTP headers
+
+For HTTP transport:
+
+```json
+{
+  "service": {
+    "transport": "http",
+    "url": "https://api.example.com/mcp",
+    "headers": {
+      "Authorization": "Bearer your-token",
+      "X-API-Key": "your-key"
+    }
+  }
+}
+```
+
+## Tool discovery
+
+When an agent with MCP servers starts, Jazz:
+
+1. **Connects to each enabled server** (45-second timeout)
+2. **Discovers available tools** via MCP protocol
+3. **Registers tools** in the agent's tool registry
+4. **Makes tools available** for agent use
+
+If connection fails, Jazz logs a warning and continues without that server's tools.
+
+Source: create-agent.ts:182-281
+
+## Examples
+
+### Email agent with Gmail MCP
+
+```markdown
+# 1. Add Gmail MCP server
+jazz mcp add --file gmail.json
+
+# gmail.json
+{
+  "gmail": {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-gmail"]
+  }
+}
+
+# 2. Create agent with Gmail tools
+jazz agent create
+# Select Gmail (MCP) category
+
+# 3. Use the agent
+jazz agent chat email-assistant
+> Summarize my unread emails from the last 24 hours
+```
+
+### Notion knowledge base agent
+
+```markdown
+# 1. Add Notion MCP server
+jazz mcp add
+
+{
+  "notion": {
+    "command": "npx",
+    "args": ["-y", "mcp-remote", "https://mcp.notion.com/mcp"]
+  }
+}
+
+# 2. Create agent
+jazz agent create
+# Select Notion (MCP) + File Management
+
+# 3. Use for research
+jazz agent chat research-bot
+> Research GraphQL best practices and save findings to my Notion workspace
+```
+
+### Multi-service automation
+
+```markdown
+# 1. Add multiple MCP servers
+jazz mcp add
+
+{
+  "github": {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-github"],
+    "env": { "GITHUB_TOKEN": "ghp_..." }
+  },
+  "slack": {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-slack"],
+    "env": { "SLACK_BOT_TOKEN": "xoxb-..." }
+  }
+}
+
+# 2. Create workflow
+cat > workflows/pr-notifications/WORKFLOW.md << 'EOF'
+---
+name: pr-notifications
+schedule: "*/30 * * * *"  # Every 30 minutes
+agent: automation-agent
+autoApprove: low-risk
+---
+
+Check for new pull requests in my GitHub repos.
+For each new PR, post a summary to #engineering on Slack.
+EOF
+
+# 3. Schedule it
+jazz workflow schedule pr-notifications
+```
+
+## Troubleshooting
+
+### Server tools not appearing
+
+Verify the server is enabled:
+
+```bash
+jazz mcp list
+```
+
+If disabled, enable it:
+
+```bash
+jazz mcp enable
+```
+
+### Connection timeout
+
+MCP servers have a 45-second connection timeout. If a server takes longer:
+
+```
+⚠ MCP server GitHub connection timed out after 45 seconds
+```
+
+**Possible causes:**
+
+- Server requires manual authentication (OAuth flow)
+- Network issues
+- Server not installed or not in PATH
+
+**Solutions:**
+
+- Check server documentation for auth requirements
+- Verify `command` and `args` are correct
+- Test server manually: `npx -y @modelcontextprotocol/server-github`
+
+Source: create-agent.ts:213-243
+
+### Authentication required
+
+Some servers need interactive authentication:
+
+```
+⚠ MCP server Notion requires authentication: OAuth flow needed
+```
+
+Follow the server's authentication instructions, then try again.
+
+### Tool registration failed
+
+If tools fail to register:
+
+```bash
+# Check agent configuration
+jazz agent list
+
+# Recreate agent with MCP category selected
+jazz agent create
+```
+
+## Advanced configuration
+
+### Project-specific MCP servers
+
+Add servers to `.agents/mcp.json` in your project:
+
+```bash
+mkdir -p .agents
+cat > .agents/mcp.json << 'EOF'
+{
+  "mcpServers": {
+    "project-db": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres"],
+      "env": {
+        "DATABASE_URL": "postgresql://localhost/myproject"
+      }
+    }
+  }
+}
+EOF
+```
+
+Project servers merge with (and override) user-level servers.
+
+Source: config.ts:445-490
+
+### Disable servers per-project
+
+In `jazz.config.json`:
+
+```json
+{
+  "mcpServers": {
+    "github": { "enabled": false }
+  }
+}
+```
+
+Disables the GitHub server for this project only.
+
+### Custom MCP servers
+
+Build your own MCP server for internal APIs:
+
+```json
+{
+  "internal-api": {
+    "command": "node",
+    "args": ["/path/to/your/mcp-server.js"],
+    "env": {
+      "API_BASE_URL": "https://internal.company.com/api",
+      "API_TOKEN": "your-token"
+    }
+  }
+}
+```
+
+See [MCP documentation](https://modelcontextprotocol.io/) for server development.
+
+## Best practices
+
+<Tip>
+  **Store credentials securely** - Use environment variables, not hardcoded tokens in config files.
+</Tip>
+
+<Tip>
+  **Test servers individually** - Run `npx -y server-name` to verify it works before adding to Jazz.
+</Tip>
+
+<Tip>
+  **Use project-specific servers** - Keep project-related MCP servers in `.agents/mcp.json` for portability.
+</Tip>
+
+<Warning>
+  **Limit server access** - Only enable MCP servers agents actually need. Disable unused servers.
+</Warning>
+
+<Warning>
+  **Review tool permissions** - MCP servers can expose powerful capabilities. Understand what each tool does.
+</Warning>
+
+## Next steps
+
+- [Configuration](/guides/configuration) - Customize MCP server behavior
+- [Workflows](/guides/workflows) - Automate tasks using MCP-connected agents
+- [Creating agents](/guides/creating-agents) - Build agents with MCP tool access

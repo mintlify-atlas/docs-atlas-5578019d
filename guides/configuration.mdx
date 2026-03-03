@@ -1,0 +1,722 @@
+---
+title: Configuration
+description: Customize Jazz behavior with configuration files for logging, storage, providers, and more
+---
+
+Jazz uses JSON configuration files to control behavior, credentials, and preferences. Configuration follows a merge hierarchy: defaults → global config → project config → environment variables.
+
+## Configuration files
+
+### File locations
+
+Jazz searches for configuration in this order:
+
+1. **Environment variable** - `$JAZZ_CONFIG_PATH` (if set)
+2. **Project local** - `./.jazz/config.json` or `./jazz.config.json`
+3. **Global user** - `~/.jazz/config.json`
+
+First match wins. Project config merges with and overrides global config.
+
+Source: config.ts:343-435
+
+### Configuration structure
+
+```json
+{
+  "storage": {
+    "type": "file",
+    "path": "~/.jazz"
+  },
+  "logging": {
+    "level": "info",
+    "format": "plain"
+  },
+  "llm": {
+    "anthropic": {
+      "api_key": "sk-ant-..."
+    },
+    "openai": {
+      "api_key": "sk-proj-..."
+    }
+  },
+  "web_search": {
+    "provider": "tavily",
+    "api_key": "tvly-..."
+  },
+  "google": {
+    "clientId": "...",
+    "clientSecret": "..."
+  },
+  "mcpServers": {
+    "github": { "enabled": true },
+    "slack": { "enabled": false }
+  },
+  "output": {
+    "mode": "interactive",
+    "showThinking": false,
+    "showToolExecution": true,
+    "colorProfile": "auto",
+    "showMetrics": false
+  },
+  "notifications": {
+    "enabled": true,
+    "workflow_completion": true
+  },
+  "autoApprovedCommands": [
+    "git status",
+    "git diff",
+    "ls",
+    "cat"
+  ]
+}
+```
+
+Source: config.ts:262-322
+
+## Configuration sections
+
+### Storage
+
+Controls where Jazz stores data:
+
+```json
+{
+  "storage": {
+    "type": "file",
+    "path": "~/.jazz"
+  }
+}
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `type` | string | `"file"` | Storage backend (currently only "file") |
+| `path` | string | `"~/.jazz"` | Directory for agents, workflows, logs |
+
+Source: config.ts:263
+
+### Logging
+
+Controls log output:
+
+```json
+{
+  "logging": {
+    "level": "info",
+    "format": "plain"
+  }
+}
+```
+
+| Field | Type | Options | Description |
+|-------|------|---------|-------------|
+| `level` | string | `debug`, `info`, `warn`, `error` | Minimum log level |
+| `format` | string | `plain`, `json` | Log output format |
+
+**Debug mode:**
+
+```bash
+jazz --debug
+```
+
+Overrides config to set `level: "debug"`.
+
+Source: config.ts:264-267, config.ts:216-224
+
+### LLM providers
+
+API keys and configuration for AI models:
+
+```json
+{
+  "llm": {
+    "anthropic": {
+      "api_key": "sk-ant-..."
+    },
+    "openai": {
+      "api_key": "sk-proj-...",
+      "base_url": "https://api.openai.com/v1"
+    },
+    "google": {
+      "api_key": "AIza..."
+    },
+    "ollama": {
+      "base_url": "http://localhost:11434/api"
+    },
+    "openrouter": {
+      "api_key": "sk-or-v1-..."
+    }
+  }
+}
+```
+
+**Per-provider fields:**
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `api_key` | Yes* | API key for authentication |
+| `base_url` | No | Custom API endpoint |
+
+*Except Ollama (optional auth)
+
+Source: config.ts:274
+
+### Web search
+
+Configuration for web search tools:
+
+```json
+{
+  "web_search": {
+    "provider": "tavily",
+    "api_key": "tvly-..."
+  }
+}
+```
+
+**Supported providers:**
+
+- `tavily` - Tavily Search API
+- `perplexity` - Perplexity API
+- `brave` - Brave Search API
+
+Source: config.ts:275
+
+### Google services
+
+OAuth2 credentials for Gmail and Calendar:
+
+```json
+{
+  "google": {
+    "clientId": "your-client-id.apps.googleusercontent.com",
+    "clientSecret": "your-client-secret"
+  }
+}
+```
+
+See [Gmail integration guide](/integrations/gmail) for setup.
+
+Source: config.ts:269-273
+
+### MCP servers
+
+Enable/disable MCP servers (full config in `~/.agents/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "github": { "enabled": true },
+    "notion": { "enabled": true },
+    "slack": { "enabled": false }
+  }
+}
+```
+
+See [MCP integration guide](/guides/mcp-integration) for details.
+
+Source: config.ts:312-315
+
+### Output preferences
+
+Control terminal output:
+
+```json
+{
+  "output": {
+    "mode": "interactive",
+    "showThinking": false,
+    "showToolExecution": true,
+    "colorProfile": "auto",
+    "showMetrics": false,
+    "streaming": {
+      "enabled": true
+    }
+  }
+}
+```
+
+| Field | Type | Options | Description |
+|-------|------|---------|-------------|
+| `mode` | string | `interactive`, `raw`, `json` | Output format |
+| `showThinking` | boolean | - | Display model reasoning |
+| `showToolExecution` | boolean | - | Show tool calls |
+| `colorProfile` | string | `auto`, `light`, `dark`, `none` | Color scheme |
+| `showMetrics` | boolean | - | Display token/cost metrics |
+| `streaming.enabled` | boolean | - | Stream responses |
+
+Source: config.ts:285-307
+
+### Notifications
+
+System notifications for workflow completion:
+
+```json
+{
+  "notifications": {
+    "enabled": true,
+    "workflow_completion": true
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `enabled` | boolean | Enable all notifications |
+| `workflow_completion` | boolean | Notify on workflow finish |
+
+Source: config.ts:316-318
+
+### Auto-approved commands
+
+Shell commands that don't require approval:
+
+```json
+{
+  "autoApprovedCommands": [
+    "git status",
+    "git diff",
+    "git log",
+    "ls",
+    "cat",
+    "grep",
+    "find"
+  ]
+}
+```
+
+<Warning>
+  **Use with caution** - Auto-approved commands bypass safety checks. Only add read-only commands you trust.
+</Warning>
+
+Source: config.ts:319-321
+
+## Managing configuration
+
+### View current config
+
+```bash
+jazz config show
+```
+
+Displays merged configuration (defaults + global + project).
+
+### Edit config file
+
+```bash
+# Global
+vim ~/.jazz/config.json
+
+# Project
+vim ./.jazz/config.json
+```
+
+### Set values via CLI
+
+Jazz automatically updates config when you:
+
+- Create agents (saves API keys)
+- Add MCP servers (saves enable/disable state)
+- Configure web search (saves provider and key)
+
+Manual updates:
+
+```bash
+# Edit directly
+vim ~/.jazz/config.json
+
+# Or use environment variables (see below)
+```
+
+## Environment variables
+
+Override config with environment variables:
+
+### Custom config path
+
+```bash
+export JAZZ_CONFIG_PATH=/path/to/custom/config.json
+jazz
+```
+
+Source: config.ts:412
+
+### Provider API keys
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+export OPENAI_API_KEY=sk-proj-...
+export GOOGLE_API_KEY=AIza...
+export TAVILY_API_KEY=tvly-...
+
+jazz agent chat my-agent
+```
+
+Environment variables take precedence over config file values.
+
+### Debug mode
+
+```bash
+export JAZZ_DEBUG=1
+jazz
+```
+
+Or:
+
+```bash
+jazz --debug
+```
+
+Sets logging level to "debug".
+
+Source: config.ts:216-224
+
+## Project-specific configuration
+
+Override global config per-project:
+
+```bash
+cd ~/my-project
+
+# Create project config
+mkdir -p .jazz
+cat > .jazz/config.json << 'EOF'
+{
+  "logging": {
+    "level": "debug"
+  },
+  "llm": {
+    "openai": {
+      "api_key": "project-specific-key"
+    }
+  },
+  "mcpServers": {
+    "github": { "enabled": false }
+  }
+}
+EOF
+```
+
+Project config merges with global, overriding matching keys.
+
+Source: config.ts:280-322, 414-418
+
+## Configuration merge behavior
+
+### Merge order
+
+1. **Defaults** (hardcoded in Jazz)
+2. **Global config** (`~/.jazz/config.json`)
+3. **Project config** (`./.jazz/config.json` or `./jazz.config.json`)
+4. **Environment variables**
+
+Later values override earlier ones.
+
+Source: config.ts:280-322
+
+### Nested merging
+
+Objects merge recursively:
+
+```json
+// Global
+{
+  "llm": {
+    "anthropic": { "api_key": "global-key" },
+    "openai": { "api_key": "global-key" }
+  }
+}
+
+// Project
+{
+  "llm": {
+    "anthropic": { "api_key": "project-key" }
+  }
+}
+
+// Result
+{
+  "llm": {
+    "anthropic": { "api_key": "project-key" },  // Overridden
+    "openai": { "api_key": "global-key" }       // Preserved
+  }
+}
+```
+
+### Arrays replace, don't merge
+
+```json
+// Global
+{
+  "autoApprovedCommands": ["git status", "ls"]
+}
+
+// Project
+{
+  "autoApprovedCommands": ["cat"]
+}
+
+// Result
+{
+  "autoApprovedCommands": ["cat"]  // Replaced, not merged
+}
+```
+
+## Configuration validation
+
+Jazz validates config on load:
+
+### Invalid JSON
+
+```bash
+jazz
+```
+
+```
+✗ Invalid JSON in config file: ~/.jazz/config.json
+Please ensure the file contains valid JSON.
+```
+
+Fix: Check for syntax errors (trailing commas, unquoted keys).
+
+Source: config.ts:383-393
+
+### Missing file (custom path)
+
+```bash
+JAZZ_CONFIG_PATH=/nonexistent/config.json jazz
+```
+
+```
+✗ Configuration file not found: /nonexistent/config.json
+Please ensure the file exists and the path is correct.
+```
+
+Source: config.ts:351-357
+
+### Invalid structure
+
+```bash
+jazz
+```
+
+```
+✗ Config file must contain a valid configuration object
+Expected format: { "llm": {...}, "storage": {...}, ... }
+```
+
+Fix: Ensure config is a JSON object, not array or primitive.
+
+Source: config.ts:397-406
+
+## Advanced configuration
+
+### Custom storage location
+
+```json
+{
+  "storage": {
+    "type": "file",
+    "path": "/custom/path/for/jazz/data"
+  }
+}
+```
+
+All agents, workflows, and logs will be stored here.
+
+### OpenAI-compatible custom endpoints
+
+```json
+{
+  "llm": {
+    "ai_gateway": {
+      "api_key": "your-key",
+      "base_url": "https://your-custom-endpoint.com/v1"
+    }
+  }
+}
+```
+
+Works with Azure OpenAI, custom proxies, enterprise gateways.
+
+### Multiple Ollama instances
+
+```json
+{
+  "llm": {
+    "ollama": {
+      "base_url": "http://gpu-server:11434/api"
+    }
+  }
+}
+```
+
+Point to remote Ollama server.
+
+### Workflow-specific logging
+
+In project config:
+
+```json
+{
+  "logging": {
+    "level": "debug",
+    "format": "json"
+  }
+}
+```
+
+Enables detailed JSON logs for CI/CD workflows.
+
+## Troubleshooting
+
+### Config not loading
+
+Check file location:
+
+```bash
+# Where is Jazz looking?
+jazz config show
+
+# Verify file exists
+ls -la ~/.jazz/config.json
+ls -la ./.jazz/config.json
+```
+
+### API keys not working
+
+Verify environment variables:
+
+```bash
+echo $ANTHROPIC_API_KEY
+echo $OPENAI_API_KEY
+```
+
+Check config file:
+
+```bash
+cat ~/.jazz/config.json | grep api_key
+```
+
+### Project config not overriding
+
+Ensure you're in the right directory:
+
+```bash
+pwd
+ls .jazz/config.json
+```
+
+Check merge behavior:
+
+```bash
+jazz config show
+# Look for project-specific values
+```
+
+### Permission errors
+
+```bash
+chmod 600 ~/.jazz/config.json  # Read/write for owner only
+```
+
+## Best practices
+
+<Tip>
+  **Secure API keys** - Set restrictive permissions: `chmod 600 ~/.jazz/config.json`
+</Tip>
+
+<Tip>
+  **Use environment variables in CI/CD** - Don't commit API keys to version control.
+</Tip>
+
+<Tip>
+  **Project-specific overrides** - Use `.jazz/config.json` for project-specific settings.
+</Tip>
+
+<Warning>
+  **Don't commit secrets** - Add `jazz.config.json` and `.jazz/` to `.gitignore`.
+</Warning>
+
+<Warning>
+  **Validate JSON** - Use a JSON linter before editing config files manually.
+</Warning>
+
+## Example configurations
+
+### Minimal (getting started)
+
+```json
+{
+  "llm": {
+    "openrouter": {
+      "api_key": "sk-or-v1-..."
+    }
+  }
+}
+```
+
+### Developer setup
+
+```json
+{
+  "storage": {
+    "type": "file",
+    "path": "~/.jazz"
+  },
+  "logging": {
+    "level": "debug",
+    "format": "plain"
+  },
+  "llm": {
+    "anthropic": { "api_key": "sk-ant-..." },
+    "openai": { "api_key": "sk-proj-..." },
+    "ollama": { "base_url": "http://localhost:11434/api" }
+  },
+  "web_search": {
+    "provider": "tavily",
+    "api_key": "tvly-..."
+  },
+  "output": {
+    "showThinking": true,
+    "showToolExecution": true,
+    "showMetrics": true
+  },
+  "autoApprovedCommands": [
+    "git status",
+    "git diff",
+    "ls",
+    "cat"
+  ]
+}
+```
+
+### CI/CD setup
+
+```json
+{
+  "logging": {
+    "level": "info",
+    "format": "json"
+  },
+  "llm": {
+    "openai": {
+      "api_key": "${OPENAI_API_KEY}"
+    }
+  },
+  "output": {
+    "mode": "raw",
+    "showThinking": false,
+    "showToolExecution": false,
+    "colorProfile": "none"
+  }
+}
+```
+
+Use environment variable substitution in CI.
+
+## Next steps
+
+- [Creating agents](/guides/creating-agents) - Configure agents with specific settings
+- [LLM providers](/guides/llm-providers) - Detailed provider configuration
+- [MCP integration](/guides/mcp-integration) - Configure external services

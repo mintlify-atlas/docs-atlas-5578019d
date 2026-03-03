@@ -1,0 +1,444 @@
+---
+title: CI/CD integration
+description: Run Jazz in GitHub Actions, GitLab CI, and other CI/CD pipelines for automated code reviews and release notes
+---
+
+Jazz runs in CI/CD pipelines with `--output raw` and `--auto-approve` flags, purpose-built for automation. Use Jazz for automated code reviews, release note generation, and other workflow automation in your pipelines.
+
+## Why use Jazz in CI/CD
+
+Jazz isn't just a local tool. It's designed to run in CI/CD environments:
+
+- **Automated code reviews** on every pull request
+- **Release note generation** from commit history
+- **Security audits** on dependencies
+- **Documentation generation** from code
+- **Deploy workflows** with pre-checks and smoke tests
+
+<Note>
+Jazz uses `--output raw` for CI-friendly output and `--auto-approve` to run without interactive prompts.
+</Note>
+
+## Automated code review
+
+Every pull request to Jazz gets reviewed by a Jazz agent. The workflow posts inline review comments directly on the PR.
+
+### How it works
+
+1. Installs `jazz-ai` in the CI runner
+2. Runs a code review workflow against the PR diff
+3. Posts **inline review comments** directly on the PR - on specific lines, with context
+
+### GitHub Actions workflow
+
+```yaml
+name: AI Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  code-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Jazz
+        run: npm install -g jazz-ai
+
+      - name: Run code review
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          CI: "true"
+        run: |
+          jazz --output raw workflow run code-review --auto-approve --agent ci-reviewer
+```
+
+### What the agent checks
+
+The review agent analyzes:
+
+- **Correctness**: Logic errors, edge cases, potential bugs
+- **Security issues**: SQL injection, XSS, hardcoded secrets, auth vulnerabilities
+- **TypeScript best practices**: Type safety, null handling, error handling
+- **Performance concerns**: O(n²) algorithms, memory leaks, inefficient queries
+- **Code quality**: Readability, maintainability, test coverage
+
+### Example review comment
+
+```
+📝 Jazz Code Review
+
+src/auth/jwt.ts:45
+
+Potential security issue: Token expiration not validated
+
+The refresh token is being used without checking if it has expired.
+This could allow expired tokens to be used for authentication.
+
+Suggested fix:
+
+if (refreshToken.expiresAt < Date.now()) {
+  throw new Error('Refresh token expired');
+}
+```
+
+<Tip>
+The agent posts inline comments on specific lines of code, making it easy to see exactly what needs to be fixed.
+</Tip>
+
+## Real-world example: Jazz reviews Jazz
+
+Jazz uses itself for code review. Every PR to the Jazz repository is reviewed by a Jazz agent:
+
+```yaml
+# .github/workflows/jazz.yml (simplified)
+- name: Run Jazz code review
+  run: jazz --output raw workflow run code-review --auto-approve --agent ci-reviewer
+  env:
+    OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+```
+
+The workflow:
+
+1. Resolves PR metadata (base SHA, head SHA, PR number)
+2. Checks out the PR head
+3. Runs the code review workflow
+4. Parses the JSON output from the agent
+5. Posts inline review comments on the PR
+
+### Security gate
+
+The workflow only runs on PRs from the same repository (not forks) to prevent secret exposure:
+
+```yaml
+if: |
+  (github.event_name == 'pull_request' && 
+   github.event.pull_request.head.repo.full_name == github.repository) ||
+  (github.event_name == 'issue_comment' && 
+   github.event.issue.pull_request != null && 
+   contains(github.event.comment.body, '/jazz-review') && (
+     github.event.comment.author_association == 'OWNER' ||
+     github.event.comment.author_association == 'MEMBER' ||
+     github.event.comment.author_association == 'COLLABORATOR'
+   ))
+```
+
+<Warning>
+Always implement security gates when running workflows on PRs. Never expose secrets to untrusted code from forks.
+</Warning>
+
+## Automated release notes
+
+Every release gets its notes written by Jazz. The workflow analyzes commits and generates structured release notes.
+
+### How it works
+
+1. Bumps the version and creates a git tag
+2. Runs a Jazz agent to analyze all commits since the last release
+3. Generates release notes grouped by feature area
+4. Creates the GitHub Release with those notes
+
+### GitHub Actions workflow
+
+```yaml
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: "Version bump type"
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Jazz
+        run: npm install -g jazz-ai
+
+      - name: Generate release notes
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          CI: "true"
+        run: |
+          jazz --output raw workflow run release-notes --auto-approve --agent release-notes
+
+      - name: Create GitHub release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const output = fs.readFileSync('/tmp/jazz-release-notes.txt', 'utf8');
+            // Extract markdown from output and create release
+```
+
+### Example release notes
+
+```markdown
+# v2.3.0
+
+## Features
+
+- **Auth**: Add JWT refresh token rotation (#234)
+- **API**: New batch endpoints for bulk operations (#245)
+- **CLI**: Add `jazz workflow schedule` command (#251)
+
+## Bug Fixes
+
+- Fix race condition in payment processing (#239)
+- Resolve memory leak in long-running workflows (#242)
+
+## Performance
+
+- Optimize context window management (40% reduction) (#248)
+- Cache expensive git operations (#250)
+
+## Documentation
+
+- Update authentication guide with refresh flow (#235)
+- Add CI/CD integration examples (#252)
+
+## Contributors
+
+Thank you to all contributors who made this release possible!
+```
+
+<Note>
+No more "what changed in this release?" - Jazz reads the commits, understands the changes, and writes release notes that actually make sense.
+</Note>
+
+## Run Jazz in your pipelines
+
+You can use Jazz in any CI/CD environment. Here are examples for popular platforms:
+
+### GitHub Actions
+
+```yaml
+name: AI Code Review
+on: pull_request
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - run: npm install -g jazz-ai
+
+      - name: Run review
+        run: jazz --output raw workflow run my-review --auto-approve
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+```
+
+### GitLab CI
+
+```yaml
+code-review:
+  image: node:22
+  script:
+    - npm install -g jazz-ai
+    - jazz --output raw workflow run code-review --auto-approve --agent ci-reviewer
+  variables:
+    OPENAI_API_KEY: $CI_OPENAI_API_KEY
+  only:
+    - merge_requests
+```
+
+### CircleCI
+
+```yaml
+version: 2.1
+jobs:
+  code-review:
+    docker:
+      - image: cimg/node:22.0
+    steps:
+      - checkout
+      - run:
+          name: Install Jazz
+          command: npm install -g jazz-ai
+      - run:
+          name: Run code review
+          command: jazz --output raw workflow run code-review --auto-approve
+          environment:
+            OPENAI_API_KEY: ${OPENAI_API_KEY}
+```
+
+### Jenkins
+
+```groovy
+pipeline {
+  agent any
+  stages {
+    stage('Code Review') {
+      steps {
+        sh 'npm install -g jazz-ai'
+        withCredentials([string(credentialsId: 'openai-api-key', variable: 'OPENAI_API_KEY')]) {
+          sh 'jazz --output raw workflow run code-review --auto-approve'
+        }
+      }
+    }
+  }
+}
+```
+
+## CI flags and options
+
+### `--output raw`
+
+Outputs raw text without ANSI colors or formatting, ideal for CI logs:
+
+```bash
+jazz --output raw workflow run code-review
+```
+
+### `--auto-approve`
+
+Runs without interactive prompts. Use with auto-approve policies:
+
+```bash
+jazz workflow run code-review --auto-approve
+```
+
+### `--agent <name>`
+
+Specifies which agent to use:
+
+```bash
+jazz workflow run code-review --agent ci-reviewer
+```
+
+### Environment variables
+
+- `CI=true`: Tells Jazz it's running in CI
+- `JAZZ_DISABLE_CATCH_UP=1`: Disables workflow catch-up logic
+- `OPENAI_API_KEY`: Your LLM provider API key
+
+## Agent configuration for CI
+
+Create a dedicated CI agent with appropriate tools and model:
+
+```json
+{
+  "name": "ci-reviewer",
+  "description": "Code review agent for CI/CD",
+  "model": "gpt-4o",
+  "provider": "openai",
+  "tools": ["git", "file-system"],
+  "skills": ["code-review"],
+  "temperature": 0.3
+}
+```
+
+Save to `.github/jazz/agents/ci-reviewer.json` and copy to the runner:
+
+```yaml
+- name: Setup Jazz agent
+  run: |
+    mkdir -p "$HOME/.jazz/agents"
+    cp .github/jazz/agents/ci-reviewer.json "$HOME/.jazz/agents/"
+```
+
+## Workflow configuration for CI
+
+Create workflows that work in CI environments:
+
+```yaml
+---
+name: code-review
+description: Review PR changes for issues
+autoApprove: read-only
+---
+
+Analyze the git diff from __PR_BASE_SHA__ to __PR_HEAD_SHA__.
+
+Review for:
+- Correctness and logic errors
+- Security vulnerabilities
+- Performance issues
+- Best practices
+
+Output as JSON array of comments with structure:
+{
+  "path": "src/file.ts",
+  "line": 42,
+  "body": "Review comment"
+}
+```
+
+Substitute placeholders at runtime:
+
+```bash
+sed -e "s/__PR_BASE_SHA__/$PR_BASE_SHA/g" \
+    -e "s/__PR_HEAD_SHA__/$PR_HEAD_SHA/g" \
+    .github/jazz/workflows/code-review/WORKFLOW.md > workflows/code-review/WORKFLOW.md
+```
+
+<Tip>
+See [`.github/jazz/`](https://github.com/lvndry/jazz/tree/main/.github/jazz) in the Jazz repository for full agent configs and workflow templates.
+</Tip>
+
+## More CI/CD use cases
+
+<CardGroup cols={2}>
+  <Card title="Security audits" icon="shield">
+    Run dependency audits and security scans on every commit
+  </Card>
+  <Card title="Documentation" icon="book">
+    Generate API docs and update README from code changes
+  </Card>
+  <Card title="Test generation" icon="flask">
+    Automatically generate tests for new code
+  </Card>
+  <Card title="Deploy workflows" icon="rocket">
+    Coordinate deployments with pre-checks and smoke tests
+  </Card>
+</CardGroup>
+
+## Best practices
+
+1. **Use dedicated agents**: Create CI-specific agents with lower temperature and focused tools
+2. **Implement security gates**: Only run on trusted PRs, never expose secrets to forks
+3. **Set timeouts**: CI environments have time limits, configure appropriate timeouts
+4. **Cache dependencies**: Cache Jazz installation and agent configs for faster runs
+5. **Monitor costs**: Track LLM API usage and set budgets
+6. **Version lock**: Pin Jazz version in CI for reproducible builds
+
+<Warning>
+Always use secrets management for API keys. Never hardcode credentials in workflow files or commit them to git.
+</Warning>

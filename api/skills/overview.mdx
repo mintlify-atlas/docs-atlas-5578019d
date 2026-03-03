@@ -1,0 +1,86 @@
+---
+title: Skills overview
+description: Learn how skills give your agent domain expertise on demand
+---
+
+Skills are packaged expertise your agent loads on demand—proven playbooks for complex tasks instead of winging it every time. Think deep research with multi-source verification, structured code review, meeting notes that follow your format, PR descriptions from your conventions. You get consistency and domain expertise without stuffing the context window.
+
+## What is a skill?
+
+A **skill** is a folder that contains:
+
+- **Instructions** (in `SKILL.md`) — when to use the skill, what to do step-by-step, and how to format output
+- **References** (optional) — extra docs, checklists, or data the agent can pull in when needed
+- **Scripts** (optional) — small utilities the skill can call
+
+Think of it as a **reusable workflow + knowledge pack**. The agent doesn't carry all of that in every turn. It sees a short **name** and **description** for every skill. When your request matches one, it **loads** that skill's instructions and follows them.
+
+## Why use skills?
+
+Without skills, the agent has to infer how to do "research" or "planning" or "release notes" from scratch every time. With skills:
+
+- **You get consistency** — same structure for meeting notes, same pipeline for deep research, same checklist for code review
+- **You keep context lean** — the agent only pulls in the full instructions when a skill is relevant
+- **You can share and version** — put skills in a repo, copy them across projects, or install them globally
+- **The agent stays in control** — it still decides _when_ to use a skill and can combine skills with tools and shell
+
+Skills aren't "another kind of tool." They're **how you teach your agent _how_ to do complex tasks**, while tools are _what_ it uses to do them.
+
+## Progressive disclosure
+
+Jazz uses a **progressive disclosure** model so the agent (and the context window) only see what's needed.
+
+### Level 1: Discovery (always)
+
+When a chat starts, the agent gets a **list of all available skills** with only:
+
+- **name** — e.g. `deep-research`, `todo`, `commit-message`
+- **description** — what the skill does and when to use it
+
+The agent knows "there's a skill for multi-source research" and "there's a skill for task lists" without reading thousands of lines. It uses these descriptions to decide if a skill is relevant to your request.
+
+### Level 2: Load the playbook
+
+When the agent decides a skill fits, it calls the **`load_skill`** tool with the skill name. That loads the full **SKILL.md** content: when to activate, step-by-step workflow, examples, and references to other files. The agent then follows that playbook (using other tools, shell, MCP, etc. as needed).
+
+### Level 3: Go deeper when needed
+
+For heavy skills (e.g. deep research, documentation), SKILL.md may point to extra docs—e.g. `references/verification-patterns.md`. The agent uses **`load_skill_section`** to pull in only those sections when the workflow demands it.
+
+**Net result**: the agent can have access to many skills, but only pays the "token cost" for the ones it actually uses, and only for the depth it needs.
+
+## Where skills live
+
+Skills are merged from three places, with a clear priority:
+
+| Source   | Path              | Scope                | Priority           |
+|----------|-------------------|----------------------|--------------------|
+| Built-in | Ships with Jazz   | Every project        | Base set           |
+| Global   | `~/.jazz/skills/` | All your projects    | Overrides built-in |
+| Local    | `./skills/` (cwd) | Current project only | Overrides global   |
+
+If the same **name** exists in more than one place, **local wins over global, global over built-in**. So you can override the built-in `todo` or `documentation` with your own version in a project, or install a personal skill once in `~/.jazz/skills/` and use it everywhere.
+
+## How the agent uses skills
+
+When you send a message:
+
+1. The system injects the list of available skills (name + description) and the short **Skills** instructions: if the request matches a skill, load it with `load_skill`, follow its workflow, and use `load_skill_section` when the skill references more detail.
+2. The agent compares your request to those descriptions and decides whether to call `load_skill`.
+3. If it does, it gets the full SKILL.md and follows it (calling other tools, shell, MCP, etc. as the skill specifies).
+4. When the workflow says "for X, see references/foo.md," the agent can call `load_skill_section(skill_name, "references/foo.md")` and then continue.
+
+## Browsing skills in chat
+
+In chat, you can type **`/skills`** to list all available skills (from all three sources) and open one to read its full SKILL.md. So you can see exactly what the agent sees when it loads a skill.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Built-in skills" icon="stars" href="/api/skills/built-in">
+    Explore all 23 built-in skills that ship with Jazz
+  </Card>
+  <Card title="Creating custom skills" icon="hammer" href="/api/skills/creating-custom">
+    Learn how to create your own skills
+  </Card>
+</CardGroup>

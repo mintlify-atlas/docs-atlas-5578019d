@@ -1,0 +1,366 @@
+---
+title: Development workflows
+description: Automate code reviews, commits, PR descriptions, security audits, and deployment tasks with Jazz
+---
+
+Jazz helps you automate repetitive development tasks, from generating commit messages to running security audits. Use Jazz to handle git workflows, code reviews, technical debt tracking, and more.
+
+## Git commit and push
+
+Automate the process of committing your changes with intelligent commit messages and pushing to remote.
+
+### Example
+
+```bash
+jazz agent chat git-assistant
+```
+
+**Ask:** `"Read my uncommitted changes, commit them with a short and long commit message, then push"`
+
+**Jazz will:**
+
+1. Check git status to see uncommitted changes
+2. Read and analyze the diffs
+3. Generate a short commit message (for `-m`)
+4. Generate a detailed long commit message (for the body)
+5. Show you the commit message for approval
+6. Commit the changes
+7. Push to the remote repository
+
+### Example output
+
+```bash
+You: Read my uncommitted changes, commit them with a short and long commit message, then push
+
+Agent: [Checking git status...]
+
+Found 3 modified files:
+- src/auth/jwt.ts
+- src/middleware/auth.ts
+- tests/auth.test.ts
+
+[Analyzing changes...]
+
+Suggested commit message:
+
+Short: "feat: implement JWT token refresh with rotation"
+
+Long:
+"Add automatic token refresh mechanism that refreshes tokens
+5 minutes before expiration. Implements single-use refresh token
+rotation for enhanced security. Adds Redis caching for refresh
+token blacklist to prevent replay attacks.
+
+- Add automatic refresh 5min before expiration
+- Implement single-use refresh token rotation
+- Add Redis caching for refresh token blacklist
+- Add 12 new tests covering refresh flow"
+
+Should I commit and push? (yes/no): yes
+
+Agent: ✓ Committed successfully
+      ✓ Pushed to origin/main
+```
+
+<Tip>
+Jazz automatically detects conventional commit message formats and will show you exactly what will be committed before proceeding.
+</Tip>
+
+## PR description generation
+
+Generate detailed PR descriptions automatically from your git changes and commit history.
+
+### Example
+
+**Ask:** `"I'm about to create a PR. Generate a description from my changes"`
+
+**Jazz will:**
+
+1. Analyze git diff and commit history
+2. Identify changed files and their purposes
+3. Categorize changes (features, fixes, refactoring, etc.)
+4. Generate a comprehensive PR description with:
+   - Summary
+   - List of changes
+   - Technical details
+   - Testing information
+   - Breaking changes (if any)
+   - Checklist
+
+### Example output
+
+```
+You: I'm about to create a PR. Generate a description from my changes
+
+Agent: [Analyzes git diff and commits]
+
+Found changes in:
+- src/auth/jwt.ts (token refresh logic)
+- src/middleware/auth.ts (new middleware)
+- tests/auth.test.ts (12 new tests)
+
+Generated PR description:
+
+---
+## Summary
+Implements JWT token refresh mechanism to improve user experience and security.
+
+## Changes
+- ✨ Add automatic token refresh before expiration
+- 🔒 Implement refresh token rotation for security
+- 🧪 Add comprehensive test coverage (12 new tests)
+- 📝 Update authentication documentation
+
+## Technical Details
+- Tokens now refresh 5 minutes before expiration
+- Refresh tokens are single-use and rotate on each refresh
+- Added Redis caching for refresh token blacklist
+- Backward compatible with existing auth flow
+
+## Testing
+- All existing tests passing
+- New tests cover refresh flow, rotation, and edge cases
+- Manual testing completed on staging
+
+## Breaking Changes
+None - fully backward compatible
+
+## Checklist
+- [x] Tests added/updated
+- [x] Documentation updated
+- [x] No breaking changes
+- [x] Tested locally
+---
+
+Copy this to your PR?
+
+You: yes
+
+Agent: ✓ Copied to clipboard
+Ready to paste into GitHub!
+```
+
+## Security audit
+
+Scan your codebase for security issues and automatically apply fixes.
+
+### Example
+
+**Ask:** `"Scan the codebase for security issues and fix critical ones"`
+
+**Jazz will:**
+
+1. Scan the codebase for common security vulnerabilities
+2. Identify issues like hardcoded secrets, SQL injection risks, XSS vulnerabilities
+3. Show you a detailed report with severity levels
+4. Propose fixes for each issue
+5. Apply fixes with your approval
+6. Run tests to verify nothing broke
+
+### Example output
+
+```
+You: Scan the codebase for security issues and fix critical ones
+
+Agent: 🔒 Security Audit Report
+
+🔴 Critical Issues (2):
+
+1. Hardcoded API Key (src/config/api.ts:12)
+   const API_KEY = "sk_live_abc123...";
+   Fix: Move to environment variable
+
+2. SQL Injection Risk (src/api/search.ts:45)
+   db.query(`SELECT * FROM users WHERE name = '${userName}'`);
+   Fix: Use parameterized queries
+
+Should I fix these automatically?
+
+You: yes
+
+Agent: [Applies fixes]
+
+✓ Moved API key to environment variable
+✓ Converted to parameterized query
+✓ Added input sanitization
+✓ Added tests for malicious input
+
+⚠️ Ready to commit security fixes?
+
+You: yes
+
+Agent: ✓ Committed: "security: fix critical vulnerabilities"
+```
+
+## Technical debt tracking
+
+Find, prioritize, and systematically address technical debt in your codebase.
+
+### Example
+
+**Ask:** `"Find all TODO comments in src/ and create a prioritized action plan"`
+
+**Jazz will:**
+
+1. Scan the codebase for TODO comments, FIXME, HACK, etc.
+2. Analyze the context of each technical debt item
+3. Prioritize by urgency and impact
+4. Create an actionable plan
+5. Optionally help fix high-priority items
+
+### Example output
+
+```
+You: Find all TODO comments in src/ and create a prioritized action plan
+
+Agent: Found 23 TODO comments:
+
+🔴 High Priority (5):
+1. src/auth/jwt.ts:45 - "Add token refresh before security audit"
+2. src/api/billing.ts:123 - "URGENT - Fix race condition in payments"
+3. src/db/migrations.ts:67 - "Add rollback support before v2.0"
+
+🟡 Medium Priority (12)
+🟢 Low Priority (6)
+
+You: Show me the code for item #2 and suggest a fix
+
+Agent: Current code has a race condition in payment processing.
+
+Suggested fix:
+- Use database transaction with row-level locking
+- Add idempotency key handling
+- Implement retry logic
+
+Should I apply this fix?
+
+You: yes, and run tests
+
+Agent: ✓ File updated with transaction locking
+✓ TODO comment removed
+✓ All tests passing (12/12 payment tests passed)
+```
+
+<Note>
+Jazz can search for various technical debt markers (TODO, FIXME, HACK, XXX, etc.) and prioritizes them based on keywords (URGENT, CRITICAL) and context.
+</Note>
+
+## Dependency audit
+
+Automate security audits of your project dependencies and safely fix vulnerabilities.
+
+### Example
+
+**Ask:** `"Audit my dependencies for vulnerabilities and fix them"`
+
+**Jazz will:**
+
+1. Run security audit (`npm audit`, `poetry audit`, etc.)
+2. Search CVE databases and changelogs for each vulnerability
+3. Identify safe upgrade paths (major vs. patch versions)
+4. Show you a summary with severity levels and fix options
+5. Update `package.json`/`requirements.txt` with your approval
+6. Run tests to verify nothing broke
+7. Create a detailed commit message documenting the security fixes
+
+## Deployment pipeline
+
+Coordinate complex deployments with pre-checks, migrations, and smoke tests.
+
+### Example
+
+**Ask:** `"Deploy latest main to staging"`
+
+**Jazz will:**
+
+1. Run pre-deployment checks (tests, migrations, etc.)
+2. Build the application
+3. Apply database migrations (with approval)
+4. Deploy to the target environment
+5. Run smoke tests to verify deployment
+6. Report deployment status
+
+### Example output
+
+```
+You: Deploy latest main to staging
+
+Agent: Pre-deployment checks...
+
+✓ All tests passing on main
+✓ No pending migrations
+✓ Latest commit: abc123 "feat: add notifications"
+
+Starting staging deployment:
+
+Step 1: Build
+✓ Build successful (2m 34s)
+
+Step 2: Database Migrations
+Found 2 pending migrations.
+⚠️ Apply migrations to staging database?
+
+You: yes
+
+Agent: ✓ Applied migrations successfully
+
+Step 3: Deploy Application
+⚠️ About to deploy to staging.app.company.com
+Will cause ~30s downtime. Proceed?
+
+You: yes
+
+Agent: ✓ Uploaded assets to S3
+✓ Updated container image
+✓ Restarted application servers
+✓ Health check passed
+
+Step 4: Smoke Tests
+✓ Homepage loads (201ms)
+✓ API health: OK
+✓ Database connectivity: OK
+
+✓ Deployment Complete!
+Duration: 4m 12s
+```
+
+<Tip>
+Jazz runs comprehensive pre-deployment checks and all dangerous operations require explicit approval. Smoke tests verify the deployment was successful.
+</Tip>
+
+## More examples
+
+<CardGroup cols={2}>
+  <Card title="Review commits" icon="code-branch">
+    `"Review the last 5 commits and flag anything that looks risky"`
+  </Card>
+  <Card title="Refactor code" icon="wand-magic-sparkles">
+    `"Refactor this function to use async/await and update all callers"`
+  </Card>
+  <Card title="Find TODOs" icon="list-check">
+    `"Find all TODO comments, group them by priority, and create a summary"`
+  </Card>
+  <Card title="Rollback deployment" icon="rotate-left">
+    `"Rollback to previous deployment"`
+  </Card>
+</CardGroup>
+
+## Setup
+
+Create an agent with development tools:
+
+```bash
+jazz agent create
+# Name: dev-assistant
+# Tools: Git, File System, Shell
+```
+
+Then start chatting:
+
+```bash
+jazz agent chat dev-assistant
+```
+
+<Note>
+All git operations, file changes, and shell commands require your approval before execution. Jazz will show you exactly what will be executed before proceeding.
+</Note>

@@ -1,0 +1,707 @@
+---
+title: Git tools
+description: Version control operations for repositories
+---
+
+Git tools enable AI agents to interact with Git repositories, including status checks, commits, diffs, and branch management.
+
+## Tool organization
+
+All Git tools are accessed through the `git` namespace:
+
+```typescript
+import { git } from "@/core/agent/tools/git";
+
+// Read-only tools
+const statusTool = git.status();
+const logTool = git.log();
+const diffTool = git.diff();
+
+// Write tools (approval required)
+const addTools = git.add();
+yield* registerTool(addTools.approval);
+yield* registerTool(addTools.execute);
+```
+
+## Read-only tools
+
+These tools query repository state without modifications.
+
+### git_status
+
+Show current branch, modified files, staged changes, and untracked files.
+
+**Parameters:**
+
+<ParamField path="path" type="string">
+  Repository path (defaults to current working directory)
+</ParamField>
+
+**Returns:**
+
+<ResponseField name="workingDirectory" type="string">
+  Resolved repository path
+</ResponseField>
+
+<ResponseField name="branch" type="string">
+  Current branch name
+</ResponseField>
+
+<ResponseField name="hasChanges" type="boolean">
+  Whether repository has uncommitted changes
+</ResponseField>
+
+<ResponseField name="summary" type="string[]">
+  Git status short format output lines
+</ResponseField>
+
+<ResponseField name="rawStatus" type="string">
+  Full git status output
+</ResponseField>
+
+**Example:**
+
+```typescript
+const result = yield* statusTool.handler({ path: "./my-repo" }, context);
+// {
+//   success: true,
+//   result: {
+//     workingDirectory: "/home/user/my-repo",
+//     branch: "main",
+//     hasChanges: true,
+//     summary: [
+//       "M src/main.ts",
+//       "?? new-file.ts"
+//     ]
+//   }
+// }
+```
+
+### git_log
+
+Show commit history.
+
+**Parameters:**
+
+<ParamField path="path" type="string">
+  Repository path (defaults to current working directory)
+</ParamField>
+
+<ParamField path="limit" type="number" default={20}>
+  Maximum commits to return (cap: 50)
+</ParamField>
+
+<ParamField path="oneline" type="boolean" default={false}>
+  Format commits as one-liners
+</ParamField>
+
+**Returns:**
+
+<ResponseField name="workingDirectory" type="string">
+  Resolved repository path
+</ResponseField>
+
+<ResponseField name="commitCount" type="number">
+  Number of commits returned
+</ResponseField>
+
+<ResponseField name="commits" type="array">
+  Commit objects:
+  <Expandable title="Commit object">
+    <ResponseField name="hash" type="string">
+      Full commit hash
+    </ResponseField>
+    <ResponseField name="shortHash" type="string">
+      Short commit hash
+    </ResponseField>
+    <ResponseField name="author" type="string">
+      Commit author name
+    </ResponseField>
+    <ResponseField name="relativeDate" type="string">
+      Relative date (e.g., "2 days ago")
+    </ResponseField>
+    <ResponseField name="subject" type="string">
+      Commit subject line
+    </ResponseField>
+    <ResponseField name="oneline" type="string">
+      One-line format (when `oneline: true`)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+**Example:**
+
+```typescript
+const result = yield* logTool.handler({ limit: 10, oneline: true }, context);
+// {
+//   success: true,
+//   result: {
+//     workingDirectory: "/home/user/my-repo",
+//     commitCount: 10,
+//     commits: [
+//       {
+//         hash: "a1b2c3d4e5f6...",
+//         shortHash: "a1b2c3d",
+//         author: "John Doe",
+//         relativeDate: "2 hours ago",
+//         subject: "Add new feature",
+//         oneline: "a1b2c3d Add new feature"
+//       },
+//       // ...
+//     ]
+//   }
+// }
+```
+
+### git_diff
+
+Show differences between commits, branches, or working tree.
+
+**Parameters:**
+
+<ParamField path="path" type="string">
+  Repository path (defaults to current working directory)
+</ParamField>
+
+<ParamField path="staged" type="boolean" default={false}>
+  Show staged changes (git diff --staged)
+</ParamField>
+
+<ParamField path="branch" type="string">
+  Compare with branch
+</ParamField>
+
+<ParamField path="commit" type="string">
+  Compare with commit hash
+</ParamField>
+
+<ParamField path="paths" type="string[]">
+  Scope diff to specific files (e.g., `['src/foo.ts', 'docs/bar.md']`)
+</ParamField>
+
+<ParamField path="nameOnly" type="boolean" default={false}>
+  Return only changed file paths (git diff --name-only)
+</ParamField>
+
+<ParamField path="maxLines" type="number" default={500}>
+  Maximum diff lines to return (cap: 2000)
+</ParamField>
+
+**Returns:**
+
+<ResponseField name="workingDirectory" type="string">
+  Resolved repository path
+</ResponseField>
+
+<ResponseField name="hasChanges" type="boolean">
+  Whether there are differences
+</ResponseField>
+
+<ResponseField name="diff" type="string">
+  Unified diff output (when `nameOnly: false`)
+</ResponseField>
+
+<ResponseField name="paths" type="string[]">
+  Changed file paths (when `nameOnly: true`)
+</ResponseField>
+
+<ResponseField name="count" type="number">
+  Number of changed files (when `nameOnly: true`)
+</ResponseField>
+
+<ResponseField name="truncated" type="boolean">
+  Whether diff was truncated
+</ResponseField>
+
+<ResponseField name="totalLines" type="number">
+  Total diff lines
+</ResponseField>
+
+<ResponseField name="returnedLines" type="number">
+  Lines returned
+</ResponseField>
+
+<ResponseField name="options" type="object">
+  Options used for diff
+</ResponseField>
+
+**Example:**
+
+```typescript
+// Get diff of staged changes
+const result1 = yield* diffTool.handler({ staged: true }, context);
+
+// Compare with branch
+const result2 = yield* diffTool.handler({ branch: "develop" }, context);
+
+// Get changed file names only
+const result3 = yield* diffTool.handler(
+  { nameOnly: true, paths: ["src/"] },
+  context
+);
+```
+
+### git_branch
+
+List Git branches.
+
+**Parameters:**
+
+<ParamField path="path" type="string">
+  Repository path (defaults to current working directory)
+</ParamField>
+
+**Returns:**
+
+<ResponseField name="branches" type="string[]">
+  List of branch names
+</ResponseField>
+
+<ResponseField name="current" type="string">
+  Current branch name
+</ResponseField>
+
+### git_blame
+
+Show file annotations (who changed what line).
+
+**Parameters:**
+
+<ParamField path="path" type="string">
+  Repository path (defaults to current working directory)
+</ParamField>
+
+<ParamField path="file" type="string" required>
+  File path to annotate
+</ParamField>
+
+<ParamField path="startLine" type="number">
+  Start line (1-based)
+</ParamField>
+
+<ParamField path="endLine" type="number">
+  End line (1-based)
+</ParamField>
+
+**Returns:**
+
+<ResponseField name="annotations" type="array">
+  Line annotations with commit info
+</ResponseField>
+
+### git_reflog
+
+Show reference log of HEAD updates.
+
+**Parameters:**
+
+<ParamField path="path" type="string">
+  Repository path (defaults to current working directory)
+</ParamField>
+
+<ParamField path="limit" type="number" default={20}>
+  Maximum entries to return
+</ParamField>
+
+**Returns:**
+
+<ResponseField name="entries" type="array">
+  Reflog entries with hash, action, and message
+</ResponseField>
+
+### git_tag (list)
+
+List Git tags.
+
+**Parameters:**
+
+<ParamField path="path" type="string">
+  Repository path (defaults to current working directory)
+</ParamField>
+
+**Returns:**
+
+<ResponseField name="tags" type="string[]">
+  List of tag names
+</ResponseField>
+
+## Write tools
+
+These tools modify repository state and require user approval.
+
+### git_add
+
+Stage files for the next commit.
+
+**Parameters:**
+
+<ParamField path="path" type="string">
+  Repository path (defaults to current working directory)
+</ParamField>
+
+<ParamField path="files" type="string[]" required>
+  File paths to stage (relative to repository root)
+</ParamField>
+
+<ParamField path="all" type="boolean" default={false}>
+  Stage all modified and untracked files (ignores `files` parameter)
+</ParamField>
+
+**Returns:**
+
+<ResponseField name="workingDirectory" type="string">
+  Resolved repository path
+</ResponseField>
+
+<ResponseField name="addedFiles" type="string | string[]">
+  Files added ("all files" or array of file paths)
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Success message
+</ResponseField>
+
+**Example:**
+
+```typescript
+const addTools = git.add();
+
+// Stage specific files
+const result1 = yield* addTools.execute.handler(
+  {
+    files: ["src/main.ts", "src/utils.ts"],
+  },
+  context
+);
+
+// Stage all changes
+const result2 = yield* addTools.execute.handler({ all: true }, context);
+```
+
+### git_commit
+
+Create a commit from staged changes.
+
+**Parameters:**
+
+<ParamField path="path" type="string">
+  Repository path (defaults to current working directory)
+</ParamField>
+
+<ParamField path="message" type="string" required>
+  Commit message. Use imperative mood, keep first line under 72 characters
+</ParamField>
+
+<ParamField path="all" type="boolean" default={false}>
+  Commit all modified tracked files, skipping staging (git commit -a)
+</ParamField>
+
+**Returns:**
+
+<ResponseField name="workingDirectory" type="string">
+  Resolved repository path
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Commit message
+</ResponseField>
+
+<ResponseField name="commitHash" type="string">
+  Full commit hash
+</ResponseField>
+
+**Example:**
+
+```typescript
+const commitTools = git.commit();
+const result = yield* commitTools.execute.handler(
+  {
+    message: "Add new feature\n\nDetailed description of the feature.",
+  },
+  context
+);
+// {
+//   success: true,
+//   result: {
+//     workingDirectory: "/home/user/my-repo",
+//     message: "Add new feature...",
+//     commitHash: "a1b2c3d4e5f6..."
+//   }
+// }
+```
+
+### git_push
+
+Push commits to remote repository.
+
+**Parameters:**
+
+<ParamField path="path" type="string">
+  Repository path (defaults to current working directory)
+</ParamField>
+
+<ParamField path="remote" type="string" default="origin">
+  Remote name
+</ParamField>
+
+<ParamField path="branch" type="string">
+  Branch name (defaults to current branch)
+</ParamField>
+
+<ParamField path="force" type="boolean" default={false}>
+  Force push (use with caution)
+</ParamField>
+
+**Returns:**
+
+<ResponseField name="workingDirectory" type="string">
+  Resolved repository path
+</ResponseField>
+
+<ResponseField name="remote" type="string">
+  Remote pushed to
+</ResponseField>
+
+<ResponseField name="branch" type="string">
+  Branch pushed
+</ResponseField>
+
+### git_pull
+
+Pull changes from remote repository.
+
+**Parameters:**
+
+<ParamField path="path" type="string">
+  Repository path (defaults to current working directory)
+</ParamField>
+
+<ParamField path="remote" type="string" default="origin">
+  Remote name
+</ParamField>
+
+<ParamField path="branch" type="string">
+  Branch name (defaults to current branch)
+</ParamField>
+
+**Returns:**
+
+<ResponseField name="workingDirectory" type="string">
+  Resolved repository path
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Pull result message
+</ResponseField>
+
+### git_checkout
+
+Switch branches or restore working tree files.
+
+**Parameters:**
+
+<ParamField path="path" type="string">
+  Repository path (defaults to current working directory)
+</ParamField>
+
+<ParamField path="branch" type="string">
+  Branch name to checkout
+</ParamField>
+
+<ParamField path="create" type="boolean" default={false}>
+  Create new branch (git checkout -b)
+</ParamField>
+
+<ParamField path="files" type="string[]">
+  Restore specific files
+</ParamField>
+
+### git_merge
+
+Merge branches.
+
+**Parameters:**
+
+<ParamField path="path" type="string">
+  Repository path (defaults to current working directory)
+</ParamField>
+
+<ParamField path="branch" type="string" required>
+  Branch to merge into current branch
+</ParamField>
+
+<ParamField path="strategy" type="string">
+  Merge strategy (e.g., "recursive", "ours")
+</ParamField>
+
+### git_rm
+
+Remove files from working tree and index.
+
+**Parameters:**
+
+<ParamField path="path" type="string">
+  Repository path (defaults to current working directory)
+</ParamField>
+
+<ParamField path="files" type="string[]" required>
+  File paths to remove
+</ParamField>
+
+<ParamField path="cached" type="boolean" default={false}>
+  Remove from index only (keep working tree)
+</ParamField>
+
+### git_tag (create/delete)
+
+Create or delete tags.
+
+**Parameters:**
+
+<ParamField path="path" type="string">
+  Repository path (defaults to current working directory)
+</ParamField>
+
+<ParamField path="name" type="string" required>
+  Tag name
+</ParamField>
+
+<ParamField path="message" type="string">
+  Tag message (creates annotated tag)
+</ParamField>
+
+<ParamField path="delete" type="boolean" default={false}>
+  Delete tag instead of creating
+</ParamField>
+
+## Utility functions
+
+### resolveGitWorkingDirectory
+
+Resolve and validate a Git repository path.
+
+```typescript
+import { resolveGitWorkingDirectory } from "@/core/agent/tools/git/utils";
+
+const workingDir = yield* resolveGitWorkingDirectory(
+  shell,
+  context,
+  fs,
+  "./my-repo"
+);
+```
+
+### runGitCommand
+
+Execute a Git command with proper error handling.
+
+```typescript
+import { runGitCommand } from "@/core/agent/tools/git/utils";
+
+const result = yield* runGitCommand({
+  args: ["status", "--short"],
+  workingDirectory: "/home/user/my-repo",
+  timeoutMs: 10_000, // Optional
+});
+// {
+//   stdout: string,
+//   stderr: string,
+//   exitCode: number
+// }
+```
+
+### DEFAULT_GIT_TIMEOUT
+
+Default timeout for Git commands (20 seconds):
+
+```typescript
+import { DEFAULT_GIT_TIMEOUT } from "@/core/agent/tools/git/utils";
+```
+
+## Best practices
+
+### Always check status first
+
+Before committing, check what will be committed:
+
+```typescript
+// 1. Check status
+const status = yield* git.status().handler({}, context);
+
+if (status.success && status.result.hasChanges) {
+  // 2. Review changes
+  const diff = yield* git.diff().handler({ staged: true }, context);
+
+  // 3. Commit
+  const commitTools = git.commit();
+  yield* commitTools.execute.handler(
+    { message: "Fix bug in parser" },
+    context
+  );
+}
+```
+
+### Use descriptive commit messages
+
+Follow conventional commit format:
+
+```typescript
+git.commit().execute.handler(
+  {
+    message:
+      "feat: Add user authentication\n\n" +
+      "- Implement JWT token generation\n" +
+      "- Add login/logout endpoints\n" +
+      "- Update user model with password hashing",
+  },
+  context
+);
+```
+
+### Scope diffs to relevant files
+
+When working with large repositories:
+
+```typescript
+// Good: Scope to relevant files
+git.diff().handler(
+  {
+    paths: ["src/auth/", "tests/auth/"],
+    maxLines: 200,
+  },
+  context
+);
+
+// Bad: Request full repository diff
+git.diff().handler({}, context);
+```
+
+### Use nameOnly for file lists
+
+When you only need to know which files changed:
+
+```typescript
+// Get list of modified files
+const result = yield* git.diff().handler(
+  { staged: true, nameOnly: true },
+  context
+);
+// result.result.paths = ["src/main.ts", "tests/main.test.ts"]
+```
+
+### Handle merge conflicts
+
+Always check for conflicts after pulling:
+
+```typescript
+const pullTools = git.pull();
+const pullResult = yield* pullTools.execute.handler({}, context);
+
+if (pullResult.success) {
+  // Check for conflicts
+  const status = yield* git.status().handler({}, context);
+  if (status.result.summary.some((line) => line.startsWith("UU"))) {
+    // Handle conflicts
+  }
+}
+```

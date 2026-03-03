@@ -1,0 +1,191 @@
+---
+title: Agent commands
+description: Create, manage, and interact with AI agents
+---
+
+Agent commands let you create, configure, and interact with autonomous AI agents.
+
+## jazz agent create
+
+Create a new agent interactively.
+
+```bash
+jazz agent create
+```
+
+Launches an interactive wizard that guides you through:
+
+1. **Agent type selection**: Choose predefined agent types (coder, researcher) or custom
+2. **LLM provider**: Select from 15+ supported providers
+3. **Model selection**: Pick the right model for your use case
+4. **Tool selection**: Choose which capabilities to enable
+5. **Name and description**: Give your agent an identity
+
+<Tip>Use predefined agent types for quick setup with optimized tool sets and prompts.</Tip>
+
+## jazz agent list
+
+List all configured agents.
+
+```bash
+jazz agent list
+jazz agent ls  # alias
+```
+
+**Options:**
+
+<ParamField path="-v, --verbose" type="boolean">
+  Show additional details including tool lists
+</ParamField>
+
+Displays a formatted table with:
+- Agent name and description
+- LLM provider and model
+- Persona type
+- Reasoning effort level
+- Creation and update timestamps
+- Agent ID
+
+## jazz agent show
+
+View detailed information about a specific agent.
+
+```bash
+jazz agent show <agentId>
+```
+
+**Arguments:**
+
+<ParamField path="agentId" type="string" required>
+  Agent ID or name to display
+</ParamField>
+
+Shows complete agent configuration:
+- Model and provider details
+- Persona configuration
+- Enabled tools
+- Metadata (created, updated)
+- Full agent ID
+
+## jazz agent edit
+
+Edit an existing agent's configuration.
+
+```bash
+jazz agent edit <agentId>
+```
+
+**Arguments:**
+
+<ParamField path="agentId" type="string" required>
+  Agent ID or name to edit
+</ParamField>
+
+Launches an interactive editor where you can modify:
+- Name and description
+- LLM provider and model
+- Tool selection
+- Persona
+- Reasoning effort
+
+<Warning>Editing an agent's configuration will affect all future conversations with that agent.</Warning>
+
+## jazz agent delete
+
+Delete an agent permanently.
+
+```bash
+jazz agent delete <agentId>
+jazz agent remove <agentId>  # alias
+jazz agent rm <agentId>      # alias
+```
+
+**Arguments:**
+
+<ParamField path="agentId" type="string" required>
+  Agent ID or name to delete
+</ParamField>
+
+<Warning>This operation is irreversible. All agent configuration and metadata will be permanently deleted.</Warning>
+
+## jazz agent chat
+
+Start an interactive chat session with an agent.
+
+```bash
+jazz agent chat <agentIdentifier> [options]
+```
+
+**Arguments:**
+
+<ParamField path="agentIdentifier" type="string" required>
+  Agent ID or name to chat with
+</ParamField>
+
+**Options:**
+
+<ParamField path="--stream" type="boolean">
+  Force streaming mode for real-time output
+</ParamField>
+
+<ParamField path="--no-stream" type="boolean">
+  Disable streaming mode
+</ParamField>
+
+During chat, you can use [in-chat slash commands](/cli/chat-commands) like `/tools`, `/model`, `/help`, etc.
+
+## Examples
+
+### Create a code review agent
+
+```bash
+jazz agent create
+# Select: coder
+# Provider: anthropic
+# Model: claude-3-5-sonnet-20241022
+# Tools: git, filesystem, shell
+# Name: code-reviewer
+```
+
+### List all agents with verbose output
+
+```bash
+jazz agent list --verbose
+```
+
+### Chat with an agent by name
+
+```bash
+jazz agent chat code-reviewer
+```
+
+### View agent details
+
+```bash
+jazz agent show code-reviewer
+```
+
+### Delete an agent
+
+```bash
+jazz agent delete old-agent
+```
+
+## Tips
+
+<Tip>Agent names are case-insensitive. You can use either the name or ID to reference an agent.</Tip>
+
+<Tip>Create specialized agents for different tasks. For example, one for code review, one for research, one for email management.</Tip>
+
+<Tip>Use reasoning models (like o1, o3-mini) for complex problem-solving tasks that require step-by-step thinking.</Tip>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="In-chat commands" icon="message" href="/cli/chat-commands">
+    Learn about slash commands during chat
+  </Card>
+  <Card title="Creating agents" icon="wand-magic-sparkles" href="/guides/creating-agents">
+    Detailed guide to agent creation
+  </Card>
+</CardGroup>

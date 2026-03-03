@@ -1,0 +1,439 @@
+---
+title: Web search tools
+description: Search the web using multiple provider integrations
+---
+
+The web search tool enables AI agents to search the internet using various search providers including Brave, Perplexity, Parallel, Exa, and Tavily.
+
+## Tool overview
+
+```typescript
+import { createWebSearchTool } from "@/core/agent/tools/web-search-tools";
+
+const webSearchTool = createWebSearchTool();
+yield* registerTool(webSearchTool);
+```
+
+## web_search
+
+Search the web for real-time information.
+
+**Parameters:**
+
+<ParamField path="query" type="string" required>
+  Search query. Be specific and add context/constraints to narrow results.
+  
+  Maximum length: 5000 characters
+</ParamField>
+
+<ParamField path="depth" type="'standard' | 'deep'" default="standard">
+  Search depth:
+  - `standard`: Fast, basic search
+  - `deep`: Comprehensive search with more results
+</ParamField>
+
+<ParamField path="fromDate" type="string">
+  Start date filter in ISO 8601 format (YYYY-MM-DD)
+  
+  Example: `"2024-01-01"`
+</ParamField>
+
+<ParamField path="toDate" type="string">
+  End date filter in ISO 8601 format (YYYY-MM-DD)
+  
+  Example: `"2024-12-31"`
+</ParamField>
+
+<ParamField path="maxResults" type="number" default={50}>
+  Maximum results to return (cap: 100)
+</ParamField>
+
+**Returns:**
+
+<ResponseField name="results" type="array">
+  Search results:
+  <Expandable title="Search result object">
+    <ResponseField name="title" type="string">
+      Page title
+    </ResponseField>
+    <ResponseField name="url" type="string">
+      Page URL
+    </ResponseField>
+    <ResponseField name="snippet" type="string">
+      Content excerpt or description
+    </ResponseField>
+    <ResponseField name="publishedDate" type="string">
+      Publication date (if available)
+    </ResponseField>
+    <ResponseField name="source" type="string">
+      Search provider name
+    </ResponseField>
+    <ResponseField name="metadata" type="object">
+      Provider-specific metadata (e.g., relevance score)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="totalResults" type="number">
+  Total results returned
+</ResponseField>
+
+<ResponseField name="query" type="string">
+  Search query used
+</ResponseField>
+
+<ResponseField name="timestamp" type="string">
+  ISO 8601 timestamp of search execution
+</ResponseField>
+
+<ResponseField name="provider" type="'brave' | 'perplexity' | 'parallel' | 'exa' | 'tavily'">
+  Search provider used
+</ResponseField>
+
+**Example:**
+
+```typescript
+const result = yield* webSearchTool.handler(
+  {
+    query: "TypeScript 5.0 new features release notes",
+    depth: "standard",
+    maxResults: 10,
+    fromDate: "2024-01-01",
+  },
+  context
+);
+
+if (result.success) {
+  console.log(`Found ${result.result.totalResults} results:`);
+  for (const item of result.result.results) {
+    console.log(`- ${item.title}: ${item.url}`);
+  }
+}
+```
+
+## Configuration
+
+Web search requires configuration in your Jazz settings:
+
+```json
+{
+  "web_search": {
+    "provider": "brave",
+    "brave": {
+      "api_key": "YOUR_BRAVE_API_KEY"
+    }
+  }
+}
+```
+
+## Supported providers
+
+### Brave Search
+
+**Provider:** `brave`
+
+**Configuration:**
+
+```json
+{
+  "web_search": {
+    "provider": "brave",
+    "brave": {
+      "api_key": "YOUR_BRAVE_API_KEY"
+    }
+  }
+}
+```
+
+**Features:**
+- Fast, privacy-focused search
+- No tracking or profiling
+- Independent index
+
+**Get API key:** [Brave Search API](https://brave.com/search/api/)
+
+### Perplexity
+
+**Provider:** `perplexity`
+
+**Configuration:**
+
+```json
+{
+  "web_search": {
+    "provider": "perplexity",
+    "perplexity": {
+      "api_key": "YOUR_PERPLEXITY_API_KEY"
+    }
+  }
+}
+```
+
+**Features:**
+- AI-powered search
+- Summarized results
+- Citation tracking
+
+**Get API key:** [Perplexity API](https://www.perplexity.ai/api)
+
+### Parallel
+
+**Provider:** `parallel`
+
+**Configuration:**
+
+```json
+{
+  "web_search": {
+    "provider": "parallel",
+    "parallel": {
+      "api_key": "YOUR_PARALLEL_API_KEY"
+    }
+  }
+}
+```
+
+**Features:**
+- Agentic search mode
+- Multi-source aggregation
+- Structured excerpts
+
+**Get API key:** [Parallel Web](https://parallel.com)
+
+### Exa
+
+**Provider:** `exa`
+
+**Configuration:**
+
+```json
+{
+  "web_search": {
+    "provider": "exa",
+    "exa": {
+      "api_key": "YOUR_EXA_API_KEY"
+    }
+  }
+}
+```
+
+**Features:**
+- Neural search
+- Semantic understanding
+- Auto-prompt enhancement
+- Date range filtering
+
+**Get API key:** [Exa AI](https://exa.ai)
+
+### Tavily
+
+**Provider:** `tavily`
+
+**Configuration:**
+
+```json
+{
+  "web_search": {
+    "provider": "tavily",
+    "tavily": {
+      "api_key": "YOUR_TAVILY_API_KEY"
+    }
+  }
+}
+```
+
+**Features:**
+- Advanced/basic depth modes
+- Date range filtering
+- Relevance scoring
+- Content extraction
+
+**Get API key:** [Tavily AI](https://tavily.com)
+
+## Provider selection
+
+The tool automatically uses the configured provider. To change providers, update your configuration:
+
+```typescript
+import { WEB_SEARCH_PROVIDERS } from "@/core/agent/tools/web-search-tools";
+
+// Available providers
+WEB_SEARCH_PROVIDERS.forEach((provider) => {
+  console.log(`${provider.name}: ${provider.value}`);
+});
+// Brave: brave
+// Perplexity: perplexity
+// Parallel: parallel
+// Exa: exa
+// Tavily: tavily
+```
+
+## Error handling
+
+### No provider configured
+
+```typescript
+{
+  success: false,
+  error: "No external web search provider configured. Please configure an external provider (Parallel, Exa, Tavily, Brave, or Perplexity) in settings."
+}
+```
+
+### Missing API key
+
+```typescript
+{
+  success: false,
+  error: "No API key configured for brave. Please configure 'web_search.brave.api_key' in settings."
+}
+```
+
+### Search failed
+
+```typescript
+{
+  success: false,
+  error: "Search with brave provider failed. Please check your configuration or try a different provider."
+}
+```
+
+## Best practices
+
+### Write specific queries
+
+```typescript
+// Good: Specific, contextual query
+{
+  query: "TypeScript 5.0 new features and breaking changes",
+  maxResults: 5
+}
+
+// Bad: Vague query
+{
+  query: "typescript",
+  maxResults: 100
+}
+```
+
+### Use date filters for time-sensitive searches
+
+```typescript
+// Search for recent articles
+{
+  query: "artificial intelligence research papers",
+  fromDate: "2024-01-01",
+  toDate: "2024-12-31",
+  maxResults: 20
+}
+```
+
+### Choose appropriate depth
+
+```typescript
+// Quick fact-checking: standard depth
+{
+  query: "Python 3.12 release date",
+  depth: "standard",
+  maxResults: 5
+}
+
+// Research: deep search
+{
+  query: "quantum computing applications in cryptography",
+  depth: "deep",
+  maxResults: 50
+}
+```
+
+### Limit results appropriately
+
+```typescript
+// Quick answer: few results
+{
+  query: "current weather in San Francisco",
+  maxResults: 3
+}
+
+// Comprehensive research: many results
+{
+  query: "machine learning frameworks comparison",
+  maxResults: 50
+}
+```
+
+### Add constraints to narrow results
+
+```typescript
+// Add constraints in query
+{
+  query: "React hooks tutorial site:react.dev OR site:beta.reactjs.org",
+  maxResults: 10
+}
+```
+
+## Common use cases
+
+### Finding documentation
+
+```typescript
+const result = yield* webSearchTool.handler(
+  {
+    query: "Effect-TS retry policy documentation",
+    maxResults: 5,
+  },
+  context
+);
+```
+
+### Researching recent news
+
+```typescript
+const result = yield* webSearchTool.handler(
+  {
+    query: "OpenAI GPT-4 announcements",
+    fromDate: "2024-01-01",
+    depth: "deep",
+    maxResults: 20,
+  },
+  context
+);
+```
+
+### Technical problem-solving
+
+```typescript
+const result = yield* webSearchTool.handler(
+  {
+    query: "TypeScript error TS2322 type string not assignable to type number",
+    maxResults: 10,
+  },
+  context
+);
+```
+
+### Competitive analysis
+
+```typescript
+const result = yield* webSearchTool.handler(
+  {
+    query: "AI code editor tools comparison 2024",
+    depth: "deep",
+    maxResults: 30,
+  },
+  context
+);
+```
+
+### Academic research
+
+```typescript
+const result = yield* webSearchTool.handler(
+  {
+    query: "transformer architecture attention mechanism papers",
+    fromDate: "2023-01-01",
+    depth: "deep",
+    maxResults: 50,
+  },
+  context
+);
+```

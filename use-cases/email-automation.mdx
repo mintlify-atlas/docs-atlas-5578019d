@@ -1,0 +1,264 @@
+---
+title: Email automation
+description: Automate inbox management, email triage, cleanup, and replies with Jazz
+---
+
+Jazz connects to Gmail to help you manage your inbox intelligently. Use Jazz to categorize emails, archive newsletters, draft replies, and clean up thousands of old messages.
+
+## Smart email triage
+
+Automate inbox management with intelligent categorization and prioritization.
+
+### Example
+
+```bash
+jazz agent chat email-triage
+```
+
+**Ask:** `"Show me unread emails from the last 2 days and organize them"`
+
+**Jazz will:**
+
+1. Read your unread emails from the specified time period
+2. Categorize them by type (work, newsletters, social, etc.)
+3. Provide a summary with counts
+4. Offer actions like archiving, labeling, or drafting replies
+
+### Example output
+
+```
+You: Show me unread emails from the last 2 days and organize them
+
+Agent: Found 23 unread emails:
+
+📊 Work (12 emails)
+- 5 from team members
+- 4 pull request notifications
+- 3 meeting invites
+
+📰 Newsletters (8 emails)
+🔔 Social (3 emails)
+
+You: Archive all newsletters and label work emails by sender
+
+Agent: ⚠️ About to:
+- Archive 8 newsletter emails
+- Add labels to 12 work emails
+
+Proceed? (yes/no)
+
+You: yes
+
+Agent: ✓ Done! Inbox organized.
+```
+
+<Tip>
+Jazz can categorize emails by sender, subject, or content. All actions require your explicit approval.
+</Tip>
+
+## Bulk email cleanup
+
+Clean up thousands of old emails based on age, sender, or content.
+
+### Example
+
+**Ask:** `"Find all emails older than 90 days from automated services"`
+
+**Jazz will:**
+
+1. Search your email for messages matching the criteria
+2. Categorize them by source (GitHub, LinkedIn, newsletters, etc.)
+3. Show you a summary with counts
+4. Ask for confirmation before deleting
+
+### Example output
+
+```
+You: Find all emails older than 90 days from automated services
+
+Agent: Found 247 emails:
+- GitHub notifications: 156 emails
+- LinkedIn messages: 45 emails
+- Newsletter archives: 46 emails
+
+You: Delete all GitHub and newsletter ones, keep LinkedIn
+
+Agent: ⚠️ PERMANENT DELETION WARNING
+About to delete 202 emails. Type 'DELETE' to confirm:
+
+You: DELETE
+
+Agent: ✓ Deleted 202 emails successfully
+```
+
+<Warning>
+Jazz requires explicit confirmation for permanent deletions. You can preview what will be deleted before confirming. Be careful with deletion commands - they're permanent.
+</Warning>
+
+## Automated email cleanup workflow
+
+Schedule Jazz to clean up your inbox automatically on a recurring basis.
+
+### Workflow configuration
+
+The `email-cleanup` workflow runs hourly to archive newsletters and promotional emails:
+
+```yaml
+---
+name: email-cleanup
+description: Clean up newsletters and promotional emails from your inbox
+schedule: "0 * * * *"
+autoApprove: low-risk
+skills:
+  - email
+---
+```
+
+### What it does
+
+**Automatically cleans:**
+
+1. **Newsletters you haven't read**: If a newsletter email has been sitting unread for more than 2 weeks, archives it
+2. **Promotional emails**: Archives any promotional/marketing emails older than 3 days
+3. **Automated notifications**: Archives GitHub notifications, CI/CD notifications, and similar automated emails you've already seen
+4. **Duplicate emails**: Keeps only the most recent email from the same sender about the same topic
+
+**Never touches:**
+
+- Personal emails from real people
+- Work-related emails with action items
+- Receipts or invoices
+- Emails marked as important
+- Any email it's uncertain about
+
+### Safety rules
+
+The workflow follows strict safety rules:
+
+- Only archives emails when highly confident they match the criteria
+- If an email could be important, personal, or work-related, it skips it
+- If the sender could be a real person (even if it looks promotional), it skips it
+- Better to leave 10 safe-to-archive emails untouched than to archive 1 important email
+
+### Schedule the workflow
+
+```bash
+jazz workflow schedule email-cleanup
+```
+
+Jazz uses `launchd` on macOS and `cron` on Linux. If your machine was asleep when the workflow was supposed to run, Jazz can catch up automatically on next launch.
+
+### Example output
+
+```
+Email Cleanup Summary:
+- 12 newsletters archived (older than 2 weeks)
+- 5 promotional emails archived
+- 8 GitHub notifications archived
+- 3 duplicate emails archived
+
+Total: 28 emails cleaned
+```
+
+<Note>
+The workflow uses the `low-risk` auto-approve policy, which allows archiving emails but requires approval for deletions.
+</Note>
+
+## Draft email replies
+
+Ask Jazz to draft replies to important emails.
+
+### Example
+
+```
+You: Draft a reply to the latest email from Sarah about the project timeline
+
+Agent: Latest email from Sarah:
+
+Subject: Project Timeline Update
+"Hi! Just wanted to check in on the authentication feature.
+Are we still on track for the end of month deadline?"
+
+Drafted reply:
+
+---
+Subject: Re: Project Timeline Update
+
+Hi Sarah,
+
+Yes, we're on track! The JWT refresh implementation is complete
+and all tests are passing. I'm currently working on the final
+security audit, which should be done by Friday.
+
+We should be ready for deployment by the 28th as planned.
+
+Best,
+[Your name]
+---
+
+Send this reply? (yes/no/edit)
+```
+
+## More examples
+
+<CardGroup cols={2}>
+  <Card title="Organize by priority" icon="layer-group">
+    `"Organize my inbox by priority"`
+  </Card>
+  <Card title="Show urgent emails" icon="triangle-exclamation">
+    `"Show me urgent emails from the last week"`
+  </Card>
+  <Card title="Label team emails" icon="tag">
+    `"Label all emails from my team"`
+  </Card>
+  <Card title="Archive old emails" icon="box-archive">
+    `"Archive all newsletters older than 30 days"`
+  </Card>
+</CardGroup>
+
+## Setup
+
+### 1. Authenticate with Gmail
+
+First, authenticate Jazz with your Gmail account:
+
+```bash
+jazz auth gmail login
+```
+
+This will open a browser window to authorize Jazz to access your Gmail. Jazz uses OAuth2 for secure authentication and only requests the permissions it needs.
+
+### 2. Create an email agent
+
+Create an agent with Gmail tools:
+
+```bash
+jazz agent create
+# Name: email-assistant
+# Tools: Gmail
+```
+
+### 3. Start chatting
+
+```bash
+jazz agent chat email-assistant
+```
+
+<Tip>
+You can ask Jazz to modify the description before using it, or refine your requests based on the context it maintains throughout the conversation.
+</Tip>
+
+## Auto-approve policies
+
+Control how much autonomy each workflow gets:
+
+| Policy | What it auto-approves |
+| --- | --- |
+| `false` | Nothing -- always asks |
+| `read-only` | Reading emails, searching |
+| `low-risk` | + archiving email, creating labels |
+| `high-risk` | + sending emails, permanent deletions |
+
+<Warning>
+Credentials are stored securely using OAuth2 for Gmail. API keys and tokens are stored in your Jazz config and are never logged or exposed.
+</Warning>

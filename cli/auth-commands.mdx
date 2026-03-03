@@ -1,0 +1,189 @@
+---
+title: Auth commands
+description: Authenticate Jazz with external services
+---
+
+Authentication commands let you connect Jazz to external services that require OAuth or API authentication.
+
+## jazz auth gmail login
+
+Authenticate with Gmail using OAuth2.
+
+```bash
+jazz auth gmail login
+```
+
+This command:
+1. Opens your browser to Google's OAuth consent screen
+2. Prompts you to grant Jazz permission to access Gmail
+3. Stores the OAuth tokens securely in `~/.jazz/credentials/`
+4. Enables email-related tools and workflows
+
+<Info>Gmail authentication uses OAuth2 with the minimum required scopes for reading and managing emails.</Info>
+
+## jazz auth gmail logout
+
+Revoke Gmail authentication and delete stored tokens.
+
+```bash
+jazz auth gmail logout
+```
+
+This will:
+- Delete OAuth tokens from local storage
+- Disable email-related tools
+- Require re-authentication for future email access
+
+<Warning>After logout, workflows and agents that depend on Gmail will no longer function until you log in again.</Warning>
+
+## Supported services
+
+Currently, Jazz supports authentication for:
+
+<CardGroup cols={1}>
+  <Card title="Gmail" icon="envelope">
+    OAuth2 authentication for reading, sending, and managing emails
+    
+    **Scopes:**
+    - `gmail.readonly` - Read emails
+    - `gmail.modify` - Archive, label, delete emails
+    - `gmail.send` - Send emails
+  </Card>
+</CardGroup>
+
+## Credential storage
+
+Authentication credentials are stored securely:
+
+- **Location**: `~/.jazz/credentials/`
+- **Format**: Encrypted JSON files
+- **Permissions**: Read/write for user only (600)
+
+<Warning>Never commit the `~/.jazz/credentials/` directory to version control.</Warning>
+
+## Examples
+
+### Authenticate with Gmail
+
+```bash
+jazz auth gmail login
+```
+
+Expected output:
+
+```
+🔐 Authenticating with Gmail...
+
+ Opening browser for authentication...
+ ✓ Authentication successful!
+ ✓ Credentials saved
+
+You can now use Gmail tools:
+  • read_email
+  • send_email
+  • search_emails
+  • archive_email
+  • delete_emails
+```
+
+### Check authentication status
+
+After authenticating, check if Gmail tools are available:
+
+```bash
+jazz agent chat my-agent
+> /tools
+```
+
+You should see Gmail tools listed in the available tools.
+
+### Revoke authentication
+
+```bash
+jazz auth gmail logout
+```
+
+Expected output:
+
+```
+🔓 Logging out of Gmail...
+ ✓ Credentials removed
+ ✓ Gmail tools disabled
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Browser doesn't open">
+    If the browser doesn't open automatically:
+    
+    1. Copy the URL displayed in the terminal
+    2. Paste it into your browser manually
+    3. Complete the OAuth flow
+    4. Jazz will detect the authentication callback
+  </Accordion>
+  
+  <Accordion title="Permission denied error">
+    If you see a permission denied error:
+    
+    1. Check that `~/.jazz/credentials/` exists and has correct permissions
+    2. Run: `chmod 700 ~/.jazz/credentials/`
+    3. Try authenticating again
+  </Accordion>
+  
+  <Accordion title="OAuth consent screen blocked">
+    If Google blocks the OAuth consent screen:
+    
+    1. Ensure you're using a Google account (not G Suite with restricted access)
+    2. Check if your organization blocks OAuth apps
+    3. Contact your administrator if you're using a managed Google Workspace account
+  </Accordion>
+  
+  <Accordion title="Token expired">
+    If you see "token expired" errors:
+    
+    1. Run `jazz auth gmail logout`
+    2. Run `jazz auth gmail login` to re-authenticate
+    3. Jazz will obtain fresh tokens
+  </Accordion>
+</AccordionGroup>
+
+## Security considerations
+
+<Warning>OAuth tokens provide access to your accounts. Treat them like passwords:</Warning>
+
+- Never share your `~/.jazz/credentials/` directory
+- Add `credentials/` to your `.gitignore`
+- Use separate Google accounts for testing
+- Revoke access from Google Account settings if compromised
+- Regularly audit which services Jazz has access to
+
+## Revoking access
+
+You can revoke Jazz's access from Google's side:
+
+1. Visit [Google Account Permissions](https://myaccount.google.com/permissions)
+2. Find "Jazz" in the list of apps
+3. Click **Remove Access**
+4. Run `jazz auth gmail logout` to clean up local tokens
+
+## Future authentication
+
+Jazz will support authentication for additional services:
+
+- **Calendar** (Google Calendar, Outlook)
+- **Slack** (send messages, read channels)
+- **GitHub** (via OAuth, in addition to MCP)
+- **Linear** (issues, projects)
+- **Notion** (via OAuth, in addition to MCP)
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Email automation" icon="envelope" href="/use-cases/email-automation">
+    Learn how to automate email workflows
+  </Card>
+  <Card title="Workflows" icon="diagram-project" href="/guides/workflows">
+    Create workflows that use authenticated services
+  </Card>
+</CardGroup>

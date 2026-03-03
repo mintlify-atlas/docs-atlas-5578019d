@@ -1,0 +1,588 @@
+---
+title: LLM providers
+description: Configure and use multiple AI models from different providers for specialized tasks
+---
+
+Jazz is provider-agnostic—you can use OpenAI, Anthropic, Google, local models with Ollama, or access hundreds of models through OpenRouter. Switch providers mid-conversation, use different models for different agents, or route to the cheapest/fastest option for each task.
+
+## Supported providers
+
+Jazz supports 15+ LLM providers:
+
+| Provider | Models | Transport |
+|----------|--------|----------|
+| **Anthropic** | Claude 4.5 Sonnet, Opus, Haiku | API |
+| **OpenAI** | GPT-4, GPT-4 Turbo, GPT-3.5, o1, o3 | API |
+| **Google** | Gemini Pro, Gemini Flash, Gemini Nano | API |
+| **xAI** | Grok, Grok Vision | API |
+| **DeepSeek** | DeepSeek Chat, DeepSeek Coder | API |
+| **Mistral** | Mistral Large, Medium, Small | API |
+| **Groq** | Llama, Mixtral (fast inference) | API |
+| **Cerebras** | Llama 3.1 (ultra-fast inference) | API |
+| **Fireworks** | Multiple open models | API |
+| **TogetherAI** | Multiple open models | API |
+| **OpenRouter** | 200+ models from all providers | API |
+| **Ollama** | Any local model | Local |
+| **AI Gateway** | Custom OpenAI-compatible endpoints | API |
+
+Source: models.ts:18-89, create-agent.ts:118
+
+## Provider configuration
+
+### Setting API keys
+
+During agent creation, Jazz prompts for missing API keys:
+
+```bash
+jazz agent create
+```
+
+```
+Which LLM provider would you like to use?
+❯ Anthropic
+  OpenAI
+  Google
+  ...
+
+⚠ API key not set in config file for Anthropic.
+Please paste your API key below:
+
+Anthropic API Key: sk-ant-...
+✓ API key saved to config file.
+```
+
+Keys are stored in `~/.jazz/config.json`:
+
+```json
+{
+  "llm": {
+    "anthropic": {
+      "api_key": "sk-ant-..."
+    },
+    "openai": {
+      "api_key": "sk-..."
+    }
+  }
+}
+```
+
+Source: create-agent.ts:413-447
+
+### Manual configuration
+
+Edit `~/.jazz/config.json` directly:
+
+```json
+{
+  "llm": {
+    "anthropic": {
+      "api_key": "sk-ant-api03-..."
+    },
+    "openai": {
+      "api_key": "sk-proj-...",
+      "base_url": "https://api.openai.com/v1"  // Optional
+    },
+    "google": {
+      "api_key": "AIza..."
+    },
+    "ollama": {
+      "base_url": "http://localhost:11434/api"  // Optional, defaults to localhost
+    },
+    "openrouter": {
+      "api_key": "sk-or-v1-..."
+    }
+  }
+}
+```
+
+## Provider details
+
+### Anthropic (Claude)
+
+Best for: complex reasoning, long-form writing, code analysis
+
+**Models:**
+
+- `claude-4.5-sonnet` - Balanced performance and cost
+- `claude-4.5-opus` - Maximum capability
+- `claude-3-haiku` - Fast and economical
+
+**Configuration:**
+
+```json
+{
+  "llm": {
+    "anthropic": {
+      "api_key": "sk-ant-..."
+    }
+  }
+}
+```
+
+**Get API key:** [console.anthropic.com](https://console.anthropic.com/)
+
+Source: models.ts:19-22
+
+### OpenAI (GPT)
+
+Best for: general tasks, function calling, structured output
+
+**Models:**
+
+- `gpt-4` - General purpose
+- `gpt-4-turbo` - Faster, cheaper GPT-4
+- `gpt-3.5-turbo` - Fast and economical
+- `o1-preview` - Advanced reasoning (slow)
+- `o3-mini` - Reasoning with cost optimization
+
+**Configuration:**
+
+```json
+{
+  "llm": {
+    "openai": {
+      "api_key": "sk-proj-...",
+      "base_url": "https://api.openai.com/v1"  // Optional
+    }
+  }
+}
+```
+
+**Get API key:** [platform.openai.com](https://platform.openai.com/api-keys)
+
+Source: models.ts:23-26
+
+### Google (Gemini)
+
+Best for: multimodal tasks, large context windows
+
+**Models:**
+
+- `gemini-2.0-flash-exp` - Latest, fastest
+- `gemini-1.5-pro` - Large context (2M tokens)
+- `gemini-1.5-flash` - Fast and economical
+
+**Configuration:**
+
+```json
+{
+  "llm": {
+    "google": {
+      "api_key": "AIza..."
+    }
+  }
+}
+```
+
+**Get API key:** [aistudio.google.com](https://aistudio.google.com/apikey)
+
+Source: models.ts:27-30
+
+### OpenRouter (Multi-provider)
+
+Best for: accessing many models with one API key, comparing models
+
+**200+ models including:**
+
+- All Anthropic Claude models
+- All OpenAI GPT models
+- Google Gemini
+- Meta Llama
+- Mistral, DeepSeek, and more
+
+**Configuration:**
+
+```json
+{
+  "llm": {
+    "openrouter": {
+      "api_key": "sk-or-v1-..."
+    }
+  }
+}
+```
+
+**Free tier:**
+
+Use the `Free Models Router` for no-cost access:
+
+```bash
+jazz agent create
+# Provider: OpenRouter
+# Model: openrouter/free  # Automatically routes to free models
+```
+
+**Get API key:** [openrouter.ai/keys](https://openrouter.ai/keys)
+
+Source: models.ts:35-38, README.md:49
+
+### Ollama (Local models)
+
+Best for: privacy, offline use, no API costs
+
+**Run any model locally:**
+
+```bash
+# Install Ollama
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Pull a model
+ollama pull llama3.1
+ollama pull qwen2.5-coder
+ollama pull mistral
+```
+
+**Configuration:**
+
+```json
+{
+  "llm": {
+    "ollama": {
+      "base_url": "http://localhost:11434/api"
+    }
+  }
+}
+```
+
+**No API key required** - Ollama is optional auth.
+
+Source: models.ts:79-83, create-agent.ts:430-431
+
+### Groq (Fast inference)
+
+Best for: speed-critical tasks, real-time applications
+
+**Models:**
+
+- Llama models with extremely fast inference
+- Mixtral models
+
+**Configuration:**
+
+```json
+{
+  "llm": {
+    "groq": {
+      "api_key": "gsk_..."
+    }
+  }
+}
+```
+
+**Get API key:** [console.groq.com](https://console.groq.com/keys)
+
+Source: models.ts:62-66
+
+### DeepSeek (Specialized models)
+
+Best for: coding tasks, technical analysis
+
+**Models:**
+
+- `deepseek-chat` - General purpose
+- `deepseek-coder` - Code generation and analysis
+
+**Configuration:**
+
+```json
+{
+  "llm": {
+    "deepseek": {
+      "api_key": "sk-..."
+    }
+  }
+}
+```
+
+**Get API key:** [platform.deepseek.com](https://platform.deepseek.com/)
+
+Source: models.ts:54-57
+
+## Reasoning models
+
+Some models support extended reasoning with configurable effort:
+
+### OpenAI o1/o3 series
+
+```bash
+jazz agent create
+# Provider: OpenAI
+# Model: o1-preview
+
+What reasoning effort level would you like?
+❯ Medium - Balanced speed and reasoning depth (recommended)
+  Low - Faster responses, basic reasoning
+  High - Deep reasoning, slower responses
+  Disable - No reasoning effort (fastest)
+```
+
+Reasoning effort controls how much "thinking time" the model uses:
+
+- **Low** - Fast, basic reasoning
+- **Medium** - Balanced (recommended)
+- **High** - Deep analysis, slower
+- **Disable** - Standard completion mode
+
+Source: create-agent.ts:496-522
+
+## Dynamic model selection
+
+Some providers fetch models dynamically from their API:
+
+| Provider | Model Source | Refresh |
+|----------|-------------|----------|
+| OpenRouter | API (`/api/v1/models`) | On agent creation |
+| Groq | API (`/models`) | On agent creation |
+| Ollama | API (`/tags`) | On agent creation |
+| Cerebras | API (`/v1/models`) | On agent creation |
+| Fireworks | API (`/v1/accounts/fireworks/models`) | On agent creation |
+| TogetherAI | API (`/v1/models`) | On agent creation |
+
+Static providers (Anthropic, OpenAI, Google) have hardcoded model lists.
+
+Source: models.ts:12-89
+
+## Switching models mid-conversation
+
+In any chat session:
+
+```
+/model
+```
+
+Select a different model:
+
+```
+Switch model:
+❯ claude-4.5-sonnet
+  gpt-4-turbo
+  gemini-2.0-flash-exp
+  llama3.1 (ollama)
+  ...
+```
+
+Conversation continues with the new model, preserving context.
+
+## Model selection by task
+
+### Code review and analysis
+
+**Best:** `claude-4.5-sonnet`, `gpt-4`, `deepseek-coder`
+
+```bash
+jazz agent create
+# Provider: Anthropic
+# Model: claude-4.5-sonnet
+# Persona: coder
+```
+
+### Research and writing
+
+**Best:** `claude-4.5-opus`, `gpt-4-turbo`, `gemini-1.5-pro`
+
+```bash
+jazz agent create
+# Provider: Google
+# Model: gemini-1.5-pro
+# Persona: researcher
+```
+
+### Fast iterations
+
+**Best:** `claude-3-haiku`, `gpt-3.5-turbo`, `gemini-1.5-flash`, `groq/llama3`
+
+```bash
+jazz agent create
+# Provider: Groq
+# Model: llama3-70b-8192
+```
+
+### Local/offline
+
+**Best:** Ollama with any model
+
+```bash
+ollama pull llama3.1
+
+jazz agent create
+# Provider: Ollama
+# Model: llama3.1
+```
+
+### Budget-conscious
+
+**Best:** OpenRouter free tier, Ollama
+
+```bash
+jazz agent create
+# Provider: OpenRouter
+# Model: openrouter/free
+```
+
+## Custom OpenAI-compatible endpoints
+
+Use the `ai_gateway` provider for custom endpoints:
+
+```json
+{
+  "llm": {
+    "ai_gateway": {
+      "api_key": "your-key",
+      "base_url": "https://your-gateway.com/v1"
+    }
+  }
+}
+```
+
+Works with:
+
+- Azure OpenAI
+- Custom LLM proxies
+- Self-hosted OpenAI-compatible APIs
+- Enterprise gateways
+
+Source: models.ts:40-43
+
+## Provider comparison
+
+### By use case
+
+| Use Case | Recommended Provider | Model |
+|----------|---------------------|-------|
+| Code review | Anthropic | claude-4.5-sonnet |
+| Long-form writing | Anthropic | claude-4.5-opus |
+| Research | Google | gemini-1.5-pro |
+| Fast iterations | Groq | llama3-70b |
+| Privacy/offline | Ollama | llama3.1 |
+| Budget | OpenRouter | Free Models Router |
+| Reasoning | OpenAI | o1-preview |
+| General purpose | OpenAI | gpt-4-turbo |
+
+### By cost
+
+| Tier | Providers | Notes |
+|------|-----------|-------|
+| **Free** | OpenRouter (free tier), Ollama | No cost, rate limited (OpenRouter) or local (Ollama) |
+| **Low** | Claude 3 Haiku, GPT-3.5 Turbo, Gemini Flash | $0.25-0.50 per 1M tokens |
+| **Medium** | Claude 4.5 Sonnet, GPT-4 Turbo, Gemini Pro | $3-15 per 1M tokens |
+| **High** | Claude 4.5 Opus, GPT-4, o1 | $15-60 per 1M tokens |
+
+### By speed
+
+| Speed | Providers | Models |
+|-------|-----------|--------|
+| **Ultra-fast** | Groq, Cerebras | Llama3, Mixtral |
+| **Fast** | All | Haiku, GPT-3.5, Flash |
+| **Standard** | All | Sonnet, GPT-4 Turbo, Pro |
+| **Slow** | OpenAI | o1, o3 (reasoning) |
+
+## Troubleshooting
+
+### API key not working
+
+Verify the key is correct:
+
+```bash
+jazz config show
+```
+
+Check `llm.<provider>.api_key` value.
+
+Update if needed:
+
+```bash
+# Edit config
+vim ~/.jazz/config.json
+
+# Or re-run agent creation to prompt for new key
+jazz agent create
+```
+
+### Model not available
+
+For dynamic providers (OpenRouter, Ollama), models are fetched at agent creation time.
+
+If a model is missing:
+
+1. **Ollama:** Pull the model first
+   ```bash
+   ollama pull model-name
+   ```
+
+2. **OpenRouter:** Check if model exists at [openrouter.ai/models](https://openrouter.ai/models)
+
+3. **Other providers:** Model may be deprecated or renamed
+
+### Rate limit errors
+
+Switch to a different provider or upgrade your plan:
+
+```
+/model
+# Select alternative provider
+```
+
+### Connection timeout
+
+For local Ollama:
+
+```bash
+# Verify Ollama is running
+ollama list
+
+# Check base URL in config
+cat ~/.jazz/config.json | grep ollama
+```
+
+For remote APIs:
+
+```bash
+# Test connectivity
+curl https://api.anthropic.com/v1/messages \
+  -H "x-api-key: $ANTHROPIC_API_KEY" \
+  -H "anthropic-version: 2023-06-01"
+```
+
+## Best practices
+
+<Tip>
+  **Use different models for different tasks** - Fast models for iteration, powerful models for complex analysis.
+</Tip>
+
+<Tip>
+  **Start with free options** - OpenRouter free tier or Ollama for experimentation.
+</Tip>
+
+<Tip>
+  **Configure multiple providers** - Have fallback options when one provider has issues.
+</Tip>
+
+<Warning>
+  **Secure API keys** - Never commit API keys to version control. Use environment variables or config files with restricted permissions.
+</Warning>
+
+<Warning>
+  **Monitor costs** - Use cheaper models for high-volume workflows. Reserve expensive models for critical tasks.
+</Warning>
+
+## Environment variables
+
+Override config with environment variables:
+
+```bash
+# Provider-specific
+export ANTHROPIC_API_KEY=sk-ant-...
+export OPENAI_API_KEY=sk-proj-...
+export GOOGLE_API_KEY=AIza...
+
+# Run Jazz
+jazz agent chat my-agent
+```
+
+Environment variables take precedence over config file values.
+
+## Next steps
+
+- [Creating agents](/guides/creating-agents) - Configure agents with specific models
+- [Configuration](/guides/configuration) - Advanced LLM provider settings
+- [Workflows](/guides/workflows) - Choose models for automated workflows

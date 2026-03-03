@@ -1,80 +1,264 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quick start
+description: Create your first Jazz agent and start automating tasks in minutes.
 ---
 
-## Get started in three steps
+This guide will walk you through creating your first Jazz agent and having your first AI-powered conversation.
 
-Get your documentation site running locally and make your first customization.
+## Create your first agent
 
-### Step 1: Set up your local environment
+<Steps>
+  <Step title="Launch the Jazz wizard">
+    Start Jazz by running the command with no arguments:
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+    ```bash
+    jazz
+    ```
 
-### Step 2: Deploy your changes
+    On first run, you'll see a welcome message and be prompted to configure desktop notifications. Jazz will also detect any API keys you have set as environment variables.
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+    <Tip>
+      If you have `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or other provider keys in your environment, Jazz will automatically detect them.
+    </Tip>
+  </Step>
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+  <Step title="Select 'Create agent'">
+    From the main menu, choose **Create agent**. Jazz will launch an interactive wizard to guide you through the setup.
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+    You'll be prompted for:
 
-### Step 3: Go live
+    - **Agent name** - A friendly identifier (e.g., "dev-assistant", "research-bot")
+    - **Description** - What this agent is for (e.g., "Helps with code reviews")
+    - **LLM provider** - Choose from OpenAI, Anthropic, Google, and more
+    - **Model** - Select the specific model (e.g., gpt-4, claude-3-opus-20240229)
+    - **Persona** - Optional personality and behavior template
+  </Step>
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+  <Step title="Start chatting">
+    Once your agent is created, Jazz will automatically start a conversation. You can now chat with your agent using natural language:
+
+    ```
+    > What files are in the current directory?
+    ```
+
+    Your agent will use its tools to read the filesystem and respond with the information you requested.
+
+    <Note>
+      Jazz agents require approval before executing potentially dangerous operations like writing files, running shell commands, or making git commits. Safe operations like reading files happen automatically.
+    </Note>
+  </Step>
+
+  <Step title="Try a complex task">
+    Let's try something more interesting. Ask your agent to analyze your project:
+
+    ```
+    > Find all TODO comments in this project and create a summary
+    ```
+
+    Your agent will:
+    1. Search for TODO comments across your codebase
+    2. Parse and categorize them
+    3. Create a formatted summary
+
+    You can approve or deny each step that requires permission.
+  </Step>
+</Steps>
+
+## Essential commands
+
+Once you're chatting with an agent, you have access to special commands that start with `/`:
+
+| Command | Description |
+|---------|-------------|
+| `/help` | Show all available commands |
+| `/exit` | End the conversation |
+| `/clear` | Clear conversation history |
+| `/tools` | List available tools |
+| `/skills` | Show loaded skills |
+| `/model` | Switch to a different model |
+| `/context` | View current context size |
+| `/cost` | Show token usage and costs |
+
+<Tip>
+  Type `/help` during any conversation to see the full list of available commands.
+</Tip>
+
+## Common workflows
+
+Here are some practical tasks you can try with your new agent:
+
+### Code review
+
+```
+> Review the last commit and flag any potential issues
+```
+
+### Git operations
+
+```
+> Create a commit with all my changes and write a good commit message
+```
+
+### Research and summarization
+
+```
+> Search the web for the latest TypeScript 5.4 features and summarize them
+```
+
+### File operations
+
+```
+> Find all files larger than 1MB in this directory
+```
+
+### Email management
+
+```
+> Check my unread emails and summarize the important ones
+```
+
+<Note>
+  For email operations, you'll need to authenticate with Gmail using `jazz auth gmail login`.
+</Note>
+
+## Manage multiple agents
+
+You can create multiple agents for different purposes. Each agent has its own configuration, conversation history, and behavior.
+
+### List all agents
+
+```bash
+jazz agent list
+```
+
+### Chat with a specific agent
+
+```bash
+jazz agent chat <agent-name>
+```
+
+### Edit an existing agent
+
+```bash
+jazz agent edit <agent-name>
+```
+
+### Delete an agent
+
+```bash
+jazz agent delete <agent-name>
+```
+
+## Understanding agent personas
+
+Personas define your agent's personality, expertise, and behavior. Jazz includes several built-in personas:
+
+- **Developer** - Code-focused, technical expertise
+- **Researcher** - Deep research, analysis, and documentation
+- **Assistant** - General-purpose helper
+- **Writer** - Content creation and editing
+
+You can also create custom personas:
+
+```bash
+jazz persona create
+```
+
+Personas can define:
+- System prompts and instructions
+- Available tools and skills
+- Response style and tone
+- Auto-approval policies
+
+## Agent configuration
+
+Agents are stored as JSON files in `~/.jazz/agents/`. Each agent has a configuration that includes:
+
+```json
+{
+  "id": "agent-123",
+  "name": "my-assistant",
+  "description": "General purpose assistant",
+  "provider": "openai",
+  "model": "gpt-4-turbo-preview",
+  "config": {
+    "persona": "assistant",
+    "temperature": 0.7,
+    "maxTokens": 4096
+  }
+}
+```
+
+You can view an agent's configuration:
+
+```bash
+jazz agent show <agent-name>
+```
+
+## Add MCP servers
+
+Extend your agent's capabilities by connecting MCP (Model Context Protocol) servers. MCP servers provide access to external services like Notion, GitHub, Linear, and more.
+
+### Add an MCP server
+
+```bash
+jazz mcp add
+```
+
+You'll be prompted to enter the MCP server configuration as JSON:
+
+```json
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"]
+    }
+  }
+}
+```
+
+### List configured MCP servers
+
+```bash
+jazz mcp list
+```
+
+### Enable or disable MCP servers
+
+```bash
+jazz mcp enable
+jazz mcp disable
+```
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
+Now that you have your first agent running, explore more advanced features:
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Agent concepts" icon="users" href="/concepts/agents">
+    Learn advanced agent configuration and management
+  </Card>
+  <Card title="Workflows" icon="clock" href="/concepts/workflows">
+    Automate recurring tasks with scheduled workflows
+  </Card>
+  <Card title="Skills" icon="brain" href="/concepts/skills">
+    Extend agents with specialized skills
+  </Card>
+  <Card title="MCP integration" icon="plug" href="/concepts/mcp">
+    Connect to external services via MCP
+  </Card>
 </CardGroup>
 
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+## Getting help
+
+If you run into issues or have questions:
+
+- Type `/help` in any conversation for in-chat commands
+- Run `jazz --help` for CLI command reference
+- Check the [GitHub issues](https://github.com/lvndry/jazz/issues)
+- Join the [Discord community](https://discord.gg/yBDbS2NZju)
+
+<Tip>
+  Press `Ctrl+P` in your terminal to see available actions and shortcuts.
+</Tip>

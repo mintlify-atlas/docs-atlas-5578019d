@@ -1,0 +1,445 @@
+---
+title: Shell tools
+description: Execute shell commands with security safeguards
+---
+
+The shell tool enables AI agents to execute arbitrary shell commands with comprehensive security checks and resource limits.
+
+## Tool overview
+
+The `execute_command` tool is an approval tool that requires user confirmation before executing commands.
+
+```typescript
+import { createShellCommandTools } from "@/core/agent/tools/shell-tools";
+
+const shellTools = createShellCommandTools();
+yield* registerTool(shellTools.approval);
+yield* registerTool(shellTools.execute);
+```
+
+## execute_command
+
+Execute a shell command with security validation.
+
+**Parameters:**
+
+<ParamField path="command" type="string" required>
+  Shell command to execute. Commands are executed in a `sh -c` subprocess
+</ParamField>
+
+<ParamField path="description" type="string" required>
+  Human-readable explanation of what the command will do. This is shown to the user during approval
+</ParamField>
+
+<ParamField path="workingDirectory" type="string">
+  Working directory for command execution (defaults to current working directory)
+</ParamField>
+
+<ParamField path="timeout" type="number" default={900000}>
+  Timeout in milliseconds (default: 900000 = 15 minutes)
+</ParamField>
+
+**Returns:**
+
+<ResponseField name="command" type="string">
+  Command that was executed
+</ResponseField>
+
+<ResponseField name="workingDirectory" type="string">
+  Working directory used
+</ResponseField>
+
+<ResponseField name="exitCode" type="number">
+  Process exit code (0 = success)
+</ResponseField>
+
+<ResponseField name="stdout" type="string">
+  Standard output from command
+</ResponseField>
+
+<ResponseField name="stderr" type="string">
+  Standard error from command
+</ResponseField>
+
+<ResponseField name="success" type="boolean">
+  Whether command succeeded (exitCode === 0)
+</ResponseField>
+
+**Example:**
+
+```typescript
+const shellTools = createShellCommandTools();
+const result = yield* shellTools.execute.handler(
+  {
+    command: "npm test",
+    description: "Run test suite",
+    workingDirectory: "./my-project",
+    timeout: 60000, // 1 minute
+  },
+  context
+);
+
+if (result.success && result.result.exitCode === 0) {
+  console.log("Tests passed:", result.result.stdout);
+} else {
+  console.error("Tests failed:", result.result.stderr);
+}
+```
+
+## Security features
+
+### Forbidden command patterns
+
+The tool blocks commands that match dangerous patterns:
+
+#### File system destruction
+
+- `rm -rf` with any path
+- `rm` with root path (`/`)
+- `rm` with home directory (`~`)
+- `rm` with wildcards (`*`)
+
+#### System commands
+
+- `sudo` - Privilege escalation
+- `su` - User switching
+- `mkfs.*` - Filesystem formatting
+- `dd if=.*of=/dev/` - Direct device writing
+- `shutdown`, `reboot`, `halt`, `poweroff` - System control
+- `init [0-6]` - Runlevel changes
+
+#### Network and code execution
+
+- `curl ... |` - Piped downloads
+- `wget ... |` - Piped downloads
+- `python -c` - Inline Python execution
+- `node -e` - Inline Node execution
+- `bash -c`, `sh -c` - Nested shell execution
+
+#### Process manipulation
+
+- `kill -9` - Force kill
+- `pkill` - Kill by name
+- `killall` - Kill all processes
+
+#### Fork bombs and resource exhaustion
+
+- `:() { ... }` - Fork bomb pattern
+- `while true` - Infinite loops
+- Shell loops that could exhaust resources
+
+#### File system manipulation
+
+- `chmod 777` - Overly permissive permissions
+- `chown root` - Changing ownership to root
+- `mount`, `umount` - Filesystem mounting
+
+#### Network manipulation
+
+- `iptables` - Firewall manipulation
+- `ufw` - Ubuntu firewall
+- `netstat -tulpn` - Network information gathering
+- `ss -tulpn` - Socket statistics
+
+#### System information gathering
+
+- `cat /etc/passwd` - Reading password file
+- `cat /etc/shadow` - Reading shadow file
+- `cat /etc/hosts` - Reading hosts file
+- `ps aux` - Process listing
+- `top`, `htop` - System monitors
+
+### Environment sanitization
+
+The tool sanitizes environment variables to prevent:
+
+- Credential leakage
+- Path manipulation
+- Locale issues
+
+Only safe environment variables are passed to subprocesses:
+
+```typescript
+import { createSanitizedEnv } from "@/core/utils/env-utils";
+
+const sanitizedEnv = createSanitizedEnv();
+// Keeps: PATH, HOME, USER, LANG, etc.
+// Removes: API keys, tokens, credentials
+```
+
+### Process isolation
+
+Commands run with security constraints:
+
+```typescript
+spawn("sh", ["-c", command], {
+  cwd: workingDir,
+  stdio: ["ignore", "pipe", "pipe"],
+  timeout: timeout,
+  env: sanitizedEnv,
+  detached: false, // Prevent background processes
+  uid: process.getuid(), // Run as current user
+  gid: process.getgid(), // Run as current group
+});
+```
+
+### Timeout enforcement
+
+Commands are terminated if they exceed the timeout:
+
+```typescript
+const timeoutId = setTimeout(() => {
+  child.kill("SIGKILL"); // Force kill after timeout
+}, timeout);
+```
+
+## Error handling
+
+The tool returns structured errors for various failure modes:
+
+### Empty command
+
+```typescript
+{
+  success: false,
+  error: "Command cannot be empty"
+}
+```
+
+### Dangerous command
+
+```typescript
+{
+  success: false,
+  error: "Command appears to be potentially dangerous and was blocked for safety. If you need to run this command, please execute it manually."
+}
+```
+
+### Timeout
+
+```typescript
+{
+  success: false,
+  error: "Command timed out after 900000ms"
+}
+```
+
+### Spawn error
+
+```typescript
+{
+  success: false,
+  error: "Command execution failed: spawn sh ENOENT"
+}
+```
+
+## Best practices
+
+### Always provide clear descriptions
+
+```typescript
+// Good: Clear, actionable description
+{
+  command: "git push origin main",
+  description: "Push commits to main branch on origin remote"
+}
+
+// Bad: Vague description
+{
+  command: "git push origin main",
+  description: "Push code"
+}
+```
+
+### Use appropriate timeouts
+
+```typescript
+// Quick command
+{
+  command: "git status",
+  description: "Check repository status",
+  timeout: 5000 // 5 seconds
+}
+
+// Long-running build
+{
+  command: "npm run build",
+  description: "Build production bundle",
+  timeout: 300000 // 5 minutes
+}
+```
+
+### Set working directory explicitly
+
+```typescript
+// Good: Explicit working directory
+{
+  command: "npm test",
+  description: "Run tests",
+  workingDirectory: "./packages/api"
+}
+
+// Bad: Relying on current directory
+{
+  command: "cd packages/api && npm test",
+  description: "Run tests"
+}
+```
+
+### Handle exit codes properly
+
+```typescript
+const result = yield* shellTools.execute.handler(
+  {
+    command: "grep 'error' logs.txt",
+    description: "Search for errors in logs",
+  },
+  context
+);
+
+if (result.success) {
+  // Note: grep returns exit code 1 when no matches found
+  if (result.result.exitCode === 0) {
+    console.log("Errors found:", result.result.stdout);
+  } else if (result.result.exitCode === 1) {
+    console.log("No errors found");
+  } else {
+    console.error("Command failed:", result.result.stderr);
+  }
+}
+```
+
+### Avoid command chaining when possible
+
+```typescript
+// Good: Single command with options
+{
+  command: "npm install --production",
+  description: "Install production dependencies"
+}
+
+// Bad: Multiple commands chained
+{
+  command: "cd project && npm install && npm run build && npm start",
+  description: "Setup and start project"
+}
+```
+
+Instead, execute multiple commands separately:
+
+```typescript
+const steps = [
+  { command: "npm install", description: "Install dependencies" },
+  { command: "npm run build", description: "Build project" },
+  { command: "npm start", description: "Start server" },
+];
+
+for (const step of steps) {
+  const result = yield* shellTools.execute.handler(
+    { ...step, workingDirectory: "./project" },
+    context
+  );
+  if (!result.success || result.result.exitCode !== 0) {
+    break; // Stop on first failure
+  }
+}
+```
+
+### Quote arguments with spaces
+
+```typescript
+// Good: Properly quoted
+{
+  command: 'echo "Hello World"',
+  description: "Print greeting"
+}
+
+// Bad: Unquoted
+{
+  command: "echo Hello World", // Might work, but fragile
+  description: "Print greeting"
+}
+```
+
+### Use dedicated tools when available
+
+Prefer specialized tools over shell commands:
+
+```typescript
+// Good: Use dedicated tool
+const result = yield* fs.ls().handler({ path: "src" }, context);
+
+// Bad: Shell command
+const result = yield* shellTools.execute.handler(
+  { command: "ls src", description: "List src directory" },
+  context
+);
+```
+
+## Common use cases
+
+### Running build scripts
+
+```typescript
+const result = yield* shellTools.execute.handler(
+  {
+    command: "npm run build",
+    description: "Build TypeScript project",
+    workingDirectory: "./my-app",
+    timeout: 180000, // 3 minutes
+  },
+  context
+);
+```
+
+### Running tests
+
+```typescript
+const result = yield* shellTools.execute.handler(
+  {
+    command: "npm test -- --coverage",
+    description: "Run tests with coverage",
+    timeout: 120000, // 2 minutes
+  },
+  context
+);
+```
+
+### Package installation
+
+```typescript
+const result = yield* shellTools.execute.handler(
+  {
+    command: "npm install lodash",
+    description: "Install lodash package",
+    timeout: 60000, // 1 minute
+  },
+  context
+);
+```
+
+### Docker operations
+
+```typescript
+const result = yield* shellTools.execute.handler(
+  {
+    command: "docker build -t myapp:latest .",
+    description: "Build Docker image",
+    timeout: 600000, // 10 minutes
+  },
+  context
+);
+```
+
+### Database operations
+
+```typescript
+const result = yield* shellTools.execute.handler(
+  {
+    command: "psql -d mydb -f schema.sql",
+    description: "Run database migration",
+    timeout: 30000, // 30 seconds
+  },
+  context
+);
+```

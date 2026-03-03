@@ -1,0 +1,641 @@
+---
+title: HTTP tools
+description: Make HTTP requests with full control over method, headers, and body
+---
+
+The HTTP tool enables AI agents to make HTTP requests to any API or web service with comprehensive control over request parameters.
+
+## Tool overview
+
+```typescript
+import { createHttpRequestTool } from "@/core/agent/tools/http-tools";
+
+const httpTool = createHttpRequestTool();
+yield* registerTool(httpTool);
+```
+
+## http_request
+
+Send HTTP requests with full control over method, headers, query parameters, and body.
+
+**Parameters:**
+
+<ParamField path="method" type="'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS'" required>
+  HTTP method
+</ParamField>
+
+<ParamField path="url" type="string" required>
+  Absolute URL with protocol (http or https)
+  
+  Example: `"https://api.example.com/v1/users"`
+</ParamField>
+
+<ParamField path="headers" type="object">
+  Request headers as key-value pairs
+  
+  Maximum: 32 headers
+  
+  Example: `{ "Authorization": "Bearer token", "Content-Type": "application/json" }`
+</ParamField>
+
+<ParamField path="query" type="object">
+  Query parameters as key-value pairs
+  
+  Values can be string, number, or boolean
+  
+  Example: `{ "page": 1, "limit": 10 }`
+</ParamField>
+
+<ParamField path="body" type="object">
+  Request body. Must be one of:
+  
+  <Expandable title="JSON body">
+    <ParamField path="type" type="'json'" required />
+    <ParamField path="value" type="unknown" required>
+      JSON-serializable value
+    </ParamField>
+  </Expandable>
+  
+  <Expandable title="Text body">
+    <ParamField path="type" type="'text'" required />
+    <ParamField path="value" type="string" required>
+      Plain text content
+    </ParamField>
+  </Expandable>
+  
+  <Expandable title="Form body">
+    <ParamField path="type" type="'form'" required />
+    <ParamField path="value" type="object" required>
+      URL-encoded form fields (key-value pairs)
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="timeoutMs" type="number" default={15000}>
+  Request timeout in milliseconds (cap: 120000 = 2 minutes)
+</ParamField>
+
+<ParamField path="followRedirects" type="boolean" default={true}>
+  Whether to follow HTTP redirects
+</ParamField>
+
+<ParamField path="maxResponseBytes" type="number" default={1048576}>
+  Maximum response size in bytes (cap: 5000000 = 5MB)
+</ParamField>
+
+<ParamField path="cacheTtlSeconds" type="number">
+  Cache duration in seconds (adds `Cache-Control: max-age` header)
+  
+  Maximum: 3600 (1 hour)
+</ParamField>
+
+**Returns:**
+
+<ResponseField name="request" type="object">
+  Request details:
+  <Expandable title="properties">
+    <ResponseField name="method" type="string">
+      HTTP method used
+    </ResponseField>
+    <ResponseField name="url" type="string">
+      Full URL (including query parameters)
+    </ResponseField>
+    <ResponseField name="headers" type="object">
+      Request headers (sensitive headers redacted)
+    </ResponseField>
+    <ResponseField name="query" type="object">
+      Query parameters
+    </ResponseField>
+    <ResponseField name="body" type="object">
+      Request body (if provided)
+    </ResponseField>
+    <ResponseField name="timeoutMs" type="number">
+      Timeout used
+    </ResponseField>
+    <ResponseField name="followRedirects" type="boolean">
+      Whether redirects were followed
+    </ResponseField>
+    <ResponseField name="maxResponseBytes" type="number">
+      Maximum response size
+    </ResponseField>
+    <ResponseField name="responseType" type="'json' | 'text' | 'bytes'">
+      Response type inferred from Content-Type
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="response" type="object">
+  Response details:
+  <Expandable title="properties">
+    <ResponseField name="status" type="number">
+      HTTP status code
+    </ResponseField>
+    <ResponseField name="statusText" type="string">
+      HTTP status text
+    </ResponseField>
+    <ResponseField name="headers" type="object">
+      Response headers (sensitive headers redacted)
+    </ResponseField>
+    <ResponseField name="elapsedMs" type="number">
+      Request duration in milliseconds
+    </ResponseField>
+    <ResponseField name="size" type="number">
+      Response size in bytes
+    </ResponseField>
+    <ResponseField name="truncated" type="boolean">
+      Whether response was truncated due to size limit
+    </ResponseField>
+    <ResponseField name="body" type="object">
+      Response body (format depends on Content-Type):
+      
+      **JSON response:**
+      <Expandable title="JSON body">
+        <ResponseField name="type" type="'json'" />
+        <ResponseField name="data" type="unknown">
+          Parsed JSON data
+        </ResponseField>
+        <ResponseField name="rawText" type="string">
+          Raw text (if truncated)
+        </ResponseField>
+        <ResponseField name="parseError" type="string">
+          Parse error message (if parsing failed)
+        </ResponseField>
+      </Expandable>
+      
+      **Text response:**
+      <Expandable title="Text body">
+        <ResponseField name="type" type="'text'" />
+        <ResponseField name="text" type="string">
+          Response text
+        </ResponseField>
+      </Expandable>
+      
+      **Binary response:**
+      <Expandable title="Bytes body">
+        <ResponseField name="type" type="'bytes'" />
+        <ResponseField name="base64" type="string">
+          Base64-encoded binary data
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+**Example:**
+
+```typescript
+// GET request with query parameters
+const result1 = yield* httpTool.handler(
+  {
+    method: "GET",
+    url: "https://api.example.com/users",
+    query: { page: 1, limit: 10 },
+    headers: {
+      Authorization: "Bearer token123",
+    },
+  },
+  context
+);
+
+// POST request with JSON body
+const result2 = yield* httpTool.handler(
+  {
+    method: "POST",
+    url: "https://api.example.com/users",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: {
+      type: "json",
+      value: {
+        name: "John Doe",
+        email: "john@example.com",
+      },
+    },
+  },
+  context
+);
+
+// Form submission
+const result3 = yield* httpTool.handler(
+  {
+    method: "POST",
+    url: "https://api.example.com/login",
+    body: {
+      type: "form",
+      value: {
+        username: "john",
+        password: "secret",
+      },
+    },
+  },
+  context
+);
+```
+
+## Security features
+
+### Header validation
+
+Headers are validated to ensure:
+
+- Maximum 32 headers
+- Valid header names (visible ASCII, no spaces)
+- Header values under 4KB
+- Automatic sanitization of sensitive headers in logs
+
+**Sensitive headers (redacted in logs):**
+- `Authorization`
+- `Cookie`
+- `*token*`
+- `*secret*`
+- `*api*key*`
+- `*credential*`
+
+### Automatic headers
+
+The tool adds default headers if not provided:
+
+```typescript
+{
+  "User-Agent": "Jazz/1.0 (https://github.com/lvndry/jazz)",
+  "Accept": "application/json, text/markdown, text/plain, application/xml, text/xml, text/html, */*",
+  "Accept-Charset": "utf-8"
+}
+```
+
+### Content-Type handling
+
+Content-Type is set automatically based on body type:
+
+- JSON body: `application/json`
+- Text body: `text/plain; charset=utf-8`
+- Form body: `application/x-www-form-urlencoded`
+
+### Response size limits
+
+Responses are truncated if they exceed `maxResponseBytes`:
+
+```typescript
+{
+  response: {
+    truncated: true,
+    size: 5242880, // Actual size
+    body: {
+      type: "text",
+      text: "[truncated content]…"
+    }
+  }
+}
+```
+
+### Timeout enforcement
+
+Requests are aborted if they exceed the timeout:
+
+```typescript
+{
+  success: false,
+  error: "Request timed out after 15000ms."
+}
+```
+
+## Error handling
+
+### Invalid URL
+
+```typescript
+{
+  success: false,
+  error: "Invalid URL: not-a-url"
+}
+```
+
+### Unsupported protocol
+
+```typescript
+{
+  success: false,
+  error: "Only http and https protocols are supported."
+}
+```
+
+### Too many headers
+
+```typescript
+{
+  success: false,
+  error: "Too many headers provided (maximum 32 allowed)."
+}
+```
+
+### Invalid header name
+
+```typescript
+{
+  success: false,
+  error: "Invalid header name \"bad name\". Header names must use visible ASCII characters without spaces."
+}
+```
+
+### Network error
+
+```typescript
+{
+  success: false,
+  error: "HTTP request failed: ECONNREFUSED"
+}
+```
+
+## Response type detection
+
+The tool automatically detects response type from `Content-Type` header:
+
+### JSON response
+
+```typescript
+// Content-Type: application/json
+{
+  response: {
+    body: {
+      type: "json",
+      data: { id: 1, name: "John" }
+    }
+  }
+}
+```
+
+### Text response
+
+```typescript
+// Content-Type: text/plain
+{
+  response: {
+    body: {
+      type: "text",
+      text: "Plain text response"
+    }
+  }
+}
+```
+
+### Binary response
+
+```typescript
+// Content-Type: image/png
+{
+  response: {
+    body: {
+      type: "bytes",
+      base64: "iVBORw0KGgoAAAANSUhEUgAA..."
+    }
+  }
+}
+```
+
+## Best practices
+
+### Handle HTTP status codes
+
+```typescript
+const result = yield* httpTool.handler(
+  {
+    method: "GET",
+    url: "https://api.example.com/users/123",
+  },
+  context
+);
+
+if (result.success) {
+  const { status, body } = result.result.response;
+  
+  if (status === 200) {
+    // Success
+    console.log("User:", body.data);
+  } else if (status === 404) {
+    // Not found
+    console.log("User not found");
+  } else if (status >= 500) {
+    // Server error
+    console.error("Server error:", status);
+  }
+}
+```
+
+### Use appropriate timeouts
+
+```typescript
+// Quick API call
+{
+  url: "https://api.example.com/ping",
+  timeoutMs: 5000 // 5 seconds
+}
+
+// Long-running request
+{
+  url: "https://api.example.com/batch-process",
+  timeoutMs: 60000 // 1 minute
+}
+```
+
+### Set proper Content-Type
+
+```typescript
+// JSON request
+{
+  method: "POST",
+  url: "https://api.example.com/data",
+  headers: { "Content-Type": "application/json" },
+  body: { type: "json", value: { key: "value" } }
+}
+
+// XML request
+{
+  method: "POST",
+  url: "https://api.example.com/data",
+  headers: { "Content-Type": "application/xml" },
+  body: { type: "text", value: "<root><key>value</key></root>" }
+}
+```
+
+### Handle authentication
+
+```typescript
+// Bearer token
+{
+  headers: {
+    Authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  }
+}
+
+// Basic auth
+{
+  headers: {
+    Authorization: `Basic ${btoa("username:password")}`
+  }
+}
+
+// API key
+{
+  headers: {
+    "X-API-Key": "your-api-key"
+  }
+}
+```
+
+### Limit response size
+
+```typescript
+// Small response expected
+{
+  url: "https://api.example.com/config",
+  maxResponseBytes: 10240 // 10KB
+}
+
+// Large file download
+{
+  url: "https://example.com/large-file.zip",
+  maxResponseBytes: 5000000 // 5MB (max)
+}
+```
+
+### Use query parameters correctly
+
+```typescript
+// Good: Use query parameter object
+{
+  url: "https://api.example.com/search",
+  query: {
+    q: "typescript",
+    page: 1,
+    limit: 10
+  }
+}
+// Actual URL: https://api.example.com/search?q=typescript&page=1&limit=10
+
+// Bad: Manually construct query string
+{
+  url: "https://api.example.com/search?q=typescript&page=1&limit=10"
+}
+```
+
+## Common use cases
+
+### REST API calls
+
+```typescript
+// List resources
+const list = yield* httpTool.handler(
+  {
+    method: "GET",
+    url: "https://api.example.com/v1/posts",
+    query: { status: "published", limit: 20 },
+  },
+  context
+);
+
+// Create resource
+const create = yield* httpTool.handler(
+  {
+    method: "POST",
+    url: "https://api.example.com/v1/posts",
+    body: {
+      type: "json",
+      value: { title: "New Post", content: "..." },
+    },
+  },
+  context
+);
+
+// Update resource
+const update = yield* httpTool.handler(
+  {
+    method: "PUT",
+    url: "https://api.example.com/v1/posts/123",
+    body: {
+      type: "json",
+      value: { title: "Updated Title" },
+    },
+  },
+  context
+);
+
+// Delete resource
+const remove = yield* httpTool.handler(
+  {
+    method: "DELETE",
+    url: "https://api.example.com/v1/posts/123",
+  },
+  context
+);
+```
+
+### Webhook calls
+
+```typescript
+const result = yield* httpTool.handler(
+  {
+    method: "POST",
+    url: "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXX",
+    body: {
+      type: "json",
+      value: {
+        text: "Deployment completed successfully",
+      },
+    },
+  },
+  context
+);
+```
+
+### GraphQL queries
+
+```typescript
+const result = yield* httpTool.handler(
+  {
+    method: "POST",
+    url: "https://api.example.com/graphql",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: {
+      type: "json",
+      value: {
+        query: `
+          query GetUser($id: ID!) {
+            user(id: $id) {
+              id
+              name
+              email
+            }
+          }
+        `,
+        variables: { id: "123" },
+      },
+    },
+  },
+  context
+);
+```
+
+### File uploads
+
+```typescript
+const result = yield* httpTool.handler(
+  {
+    method: "POST",
+    url: "https://api.example.com/upload",
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+    body: {
+      type: "form",
+      value: {
+        file: "base64-encoded-data",
+        filename: "document.pdf",
+      },
+    },
+  },
+  context
+);
+```

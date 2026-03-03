@@ -1,0 +1,159 @@
+---
+title: CLI overview
+description: Complete reference for the Jazz command-line interface
+---
+
+Jazz provides a comprehensive command-line interface for creating and managing autonomous AI agents. The CLI is organized into logical command groups for agents, workflows, MCP servers, and configuration.
+
+## Command structure
+
+All Jazz commands follow this pattern:
+
+```bash
+jazz [command] [subcommand] [options]
+```
+
+## Global options
+
+These options work with all commands:
+
+<ParamField path="-v, --verbose" type="boolean">
+  Enable verbose logging output
+</ParamField>
+
+<ParamField path="--debug" type="boolean">
+  Enable debug level logging with detailed trace information
+</ParamField>
+
+<ParamField path="--config" type="string">
+  Path to a custom configuration file (default: `~/.jazz/jazz.config.json`)
+</ParamField>
+
+<ParamField path="--no-tui" type="boolean">
+  Disable terminal UI and use plain terminal output (useful for CI/CD, scripts, or small terminals)
+</ParamField>
+
+<ParamField path="--output" type="string">
+  Output mode: `rendered`, `hybrid` (default), `raw` (no formatting), or `quiet` (suppress output)
+</ParamField>
+
+## Command groups
+
+<CardGroup cols={2}>
+  <Card title="Agent commands" icon="robot" href="/cli/agent-commands">
+    Create, manage, and chat with AI agents
+  </Card>
+  <Card title="Workflow commands" icon="diagram-project" href="/cli/workflow-commands">
+    Run and schedule automated workflows
+  </Card>
+  <Card title="MCP commands" icon="plug" href="/cli/mcp-commands">
+    Manage Model Context Protocol servers
+  </Card>
+  <Card title="Config commands" icon="gear" href="/cli/config-commands">
+    View and modify configuration settings
+  </Card>
+  <Card title="Auth commands" icon="key" href="/cli/auth-commands">
+    Authenticate with external services
+  </Card>
+  <Card title="In-chat commands" icon="message" href="/cli/chat-commands">
+    Slash commands available during agent conversations
+  </Card>
+</CardGroup>
+
+## Quick start
+
+Run Jazz without arguments to launch the interactive wizard:
+
+```bash
+jazz
+```
+
+The wizard will help you:
+- Configure your first LLM provider
+- Create your first agent
+- Start chatting
+
+## Common workflows
+
+### Create and chat with an agent
+
+```bash
+# Create a new agent (interactive)
+jazz agent create
+
+# Chat with the agent
+jazz agent chat my-agent
+```
+
+### Run a workflow
+
+```bash
+# List available workflows
+jazz workflow list
+
+# Run a workflow once
+jazz workflow run email-cleanup
+
+# Schedule a workflow
+jazz workflow schedule email-cleanup
+```
+
+### Add an MCP server
+
+```bash
+# Add interactively
+jazz mcp add
+
+# Add from file
+jazz mcp add --file mcp-config.json
+```
+
+## Output modes
+
+Jazz supports multiple output modes for different use cases:
+
+- **rendered** (default in TTY): Rich terminal UI with colors and formatting
+- **hybrid**: Mix of formatted and plain output
+- **raw**: Plain text output, ideal for piping or CI/CD
+- **quiet**: Suppress all output except errors
+
+```bash
+# Use raw output in CI/CD
+jazz --output raw workflow run code-review --auto-approve
+
+# Quiet mode for scripts
+jazz --output quiet agent list
+```
+
+## Environment variables
+
+<ParamField path="JAZZ_NO_TUI" type="string">
+  Set to `1` to disable terminal UI (same as `--no-tui`)
+</ParamField>
+
+<ParamField path="JAZZ_OUTPUT_MODE" type="string">
+  Set output mode: `rendered`, `hybrid`, `raw`, or `quiet`
+</ParamField>
+
+## Version and help
+
+```bash
+# Show version
+jazz --version
+
+# Show help for any command
+jazz --help
+jazz agent --help
+jazz workflow run --help
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Agent commands" icon="robot" href="/cli/agent-commands">
+    Learn about agent management
+  </Card>
+  <Card title="Workflow commands" icon="diagram-project" href="/cli/workflow-commands">
+    Explore workflow automation
+  </Card>
+</CardGroup>

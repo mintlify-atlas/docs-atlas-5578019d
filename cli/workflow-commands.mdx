@@ -1,0 +1,260 @@
+---
+title: Workflow commands
+description: Run, schedule, and manage automated workflows
+---
+
+Workflow commands let you automate recurring tasks with AI agents.
+
+## jazz workflow list
+
+List all available workflows.
+
+```bash
+jazz workflow list
+jazz workflow ls  # alias
+```
+
+Displays workflows organized by location:
+- **Local workflows**: Project-specific workflows in `./workflows/`
+- **Global workflows**: User workflows in `~/.jazz/workflows/`
+- **Built-in workflows**: Workflows that ship with Jazz
+
+For each workflow, shows:
+- Name and description
+- Schedule (if configured)
+- Agent assignment
+- Scheduling status (scheduled, running, not scheduled)
+
+## jazz workflow show
+
+View detailed information about a workflow.
+
+```bash
+jazz workflow show <name>
+```
+
+**Arguments:**
+
+<ParamField path="name" type="string" required>
+  Workflow name to display
+</ParamField>
+
+Displays:
+- Full workflow configuration (YAML frontmatter)
+- Workflow instructions (Markdown content)
+- File location
+- Schedule description (if configured)
+
+## jazz workflow run
+
+Run a workflow immediately.
+
+```bash
+jazz workflow run <name> [options]
+```
+
+**Arguments:**
+
+<ParamField path="name" type="string" required>
+  Workflow name to run
+</ParamField>
+
+**Options:**
+
+<ParamField path="--auto-approve" type="boolean">
+  Automatically approve tool executions based on workflow's auto-approve policy
+</ParamField>
+
+<ParamField path="--agent" type="string">
+  Agent ID or name to use for this run (overrides workflow configuration)
+</ParamField>
+
+<ParamField path="--scheduled" type="boolean">
+  Internal flag indicating this run was triggered by the scheduler
+</ParamField>
+
+### Examples
+
+```bash
+# Run a workflow interactively (you approve each action)
+jazz workflow run email-cleanup
+
+# Run with auto-approve (workflow policy applies)
+jazz workflow run email-cleanup --auto-approve
+
+# Run with a specific agent
+jazz workflow run tech-digest --agent my-researcher
+```
+
+<Warning>Use `--auto-approve` carefully. Ensure your workflow's auto-approve policy matches the risk level of its operations.</Warning>
+
+## jazz workflow schedule
+
+Enable scheduled execution for a workflow.
+
+```bash
+jazz workflow schedule <name>
+```
+
+**Arguments:**
+
+<ParamField path="name" type="string" required>
+  Workflow name to schedule
+</ParamField>
+
+Registers the workflow with your system scheduler:
+- **macOS**: Creates a `launchd` plist in `~/Library/LaunchAgents/`
+- **Linux**: Creates a `cron` entry
+
+The workflow will run according to its `schedule` field (cron expression).
+
+<Note>The workflow must have a `schedule` field in its YAML frontmatter.</Note>
+
+### Example
+
+```bash
+jazz workflow schedule email-cleanup
+# ✓ Scheduled workflow: email-cleanup
+# Will run: Every hour
+# Next run: 2024-03-03 15:00:00
+```
+
+## jazz workflow unschedule
+
+Disable scheduled execution for a workflow.
+
+```bash
+jazz workflow unschedule <name>
+```
+
+**Arguments:**
+
+<ParamField path="name" type="string" required>
+  Workflow name to unschedule
+</ParamField>
+
+Removes the workflow from the system scheduler. The workflow can still be run manually.
+
+## jazz workflow scheduled
+
+List all workflows that are currently scheduled.
+
+```bash
+jazz workflow scheduled
+```
+
+Shows:
+- Workflow name
+- Cron schedule
+- Human-readable schedule description
+- Next scheduled run time
+
+## jazz workflow catchup
+
+Run workflows that missed their scheduled execution.
+
+```bash
+jazz workflow catchup
+```
+
+This command:
+1. Identifies workflows that should have run while your machine was off
+2. Lets you select which ones to run now
+3. Executes them with their configured auto-approve policy
+
+<Info>Jazz can automatically run catch-up workflows on startup if `catchUpOnStartup: true` is set in the workflow configuration.</Info>
+
+## jazz workflow history
+
+View workflow execution history.
+
+```bash
+jazz workflow history [name]
+```
+
+**Arguments:**
+
+<ParamField path="name" type="string">
+  Optional workflow name to filter history
+</ParamField>
+
+Shows recent workflow runs with:
+- Workflow name
+- Start and end times
+- Status (success, failed, running)
+- Agent used
+- Trigger (manual, scheduled, catch-up)
+
+### Examples
+
+```bash
+# View all workflow history
+jazz workflow history
+
+# View history for a specific workflow
+jazz workflow history email-cleanup
+```
+
+## Built-in workflows
+
+Jazz ships with several ready-to-use workflows:
+
+<Accordion title="email-cleanup">
+  **Schedule**: Hourly
+  
+  Archives newsletters, organizes promotional emails, and flags important messages.
+  
+  ```bash
+  jazz workflow run email-cleanup
+  jazz workflow schedule email-cleanup
+  ```
+</Accordion>
+
+<Accordion title="tech-digest">
+  **Schedule**: Daily at 9 AM
+  
+  Scans AI/tech news sources and compiles a personalized digest.
+  
+  ```bash
+  jazz workflow run tech-digest
+  ```
+</Accordion>
+
+<Accordion title="weather-briefing">
+  **Schedule**: Every morning at 7 AM
+  
+  Provides weather forecast and outfit recommendations.
+  
+  ```bash
+  jazz workflow run weather-briefing
+  ```
+</Accordion>
+
+<Accordion title="market-analysis">
+  **Schedule**: Daily
+  
+  Stock and crypto analysis with buy/sell signals.
+  
+  ```bash
+  jazz workflow run market-analysis
+  ```
+</Accordion>
+
+## Tips
+
+<Tip>Start workflows with `autoApprove: read-only` and gradually increase to `low-risk` or `high-risk` as you build confidence.</Tip>
+
+<Tip>Test workflows with `jazz workflow run` before scheduling them.</Tip>
+
+<Tip>Check workflow history regularly to ensure scheduled runs are completing successfully.</Tip>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Workflow guide" icon="book" href="/guides/workflows">
+    Learn how to create custom workflows
+  </Card>
+  <Card title="Workflow structure" icon="file-code" href="/api/workflows/structure">
+    YAML frontmatter and configuration reference
+  </Card>
+</CardGroup>

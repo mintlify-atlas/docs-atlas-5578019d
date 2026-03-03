@@ -1,0 +1,664 @@
+---
+title: MCP (Model Context Protocol)
+description: Connect Jazz agents to external services and tools using the Model Context Protocol.
+---
+
+## What is MCP?
+
+[Model Context Protocol (MCP)](https://modelcontextprotocol.io/) is an open standard for connecting AI agents to external services. It's like a universal adapter that lets your agents talk to databases, APIs, third-party services, and custom tools.
+
+With MCP, you can:
+- **Connect to databases**: Postgres, SQLite, MongoDB
+- **Integrate services**: Notion, GitHub, Slack, Google Drive
+- **Access APIs**: Any REST API, GraphQL endpoint
+- **Build custom tools**: Expose your own services to agents
+
+<Info>
+MCP is an open standard developed by Anthropic and supported by the AI community. Any MCP-compatible tool works with Jazz.
+</Info>
+
+## Why MCP matters
+
+Without MCP, integrating each service requires:
+- Custom tool implementation
+- API client code
+- Authentication handling
+- Error handling
+- Maintenance as APIs change
+
+With MCP:
+- **One config block** → instant integration
+- **Community tools** → reuse existing servers
+- **Standard protocol** → consistent behavior
+- **Automatic updates** → servers handle API changes
+
+## How MCP works
+
+```mermaid
+graph LR
+    A[Jazz Agent] -->|Tool Call| B[MCP Client]
+    B -->|MCP Protocol| C[MCP Server]
+    C -->|API Calls| D[External Service]
+    D -->|Data| C
+    C -->|MCP Protocol| B
+    B -->|Tool Result| A
+```
+
+1. **Agent** decides to use an MCP tool (e.g., "search Notion")
+2. **MCP Client** (in Jazz) sends request via MCP protocol
+3. **MCP Server** receives request and calls the external service
+4. **External Service** returns data
+5. **MCP Server** formats response
+6. **Agent** receives structured result
+
+## Transport types
+
+Jazz supports two MCP transport mechanisms:
+
+### Stdio transport
+
+Runs MCP servers as local processes:
+
+```json
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+- **Use for**: Local tools, npm packages, custom scripts
+- **Pros**: Easy setup, runs locally
+- **Cons**: Requires Node.js/npm/npx
+
+### HTTP transport
+
+Connects to remote MCP servers via HTTP:
+
+```json
+{
+  "mcpServers": {
+    "notion": {
+      "url": "https://mcp.notion.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${NOTION_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+- **Use for**: Cloud services, hosted tools, remote APIs
+- **Pros**: No local dependencies, scales easily
+- **Cons**: Requires network access
+
+## Adding MCP servers
+
+### Interactive setup
+
+```bash
+jazz mcp add
+```
+
+You'll be prompted for:
+- Server name
+- Transport type (stdio or HTTP)
+- Command/URL
+- Environment variables or headers
+
+### Manual configuration
+
+Edit `~/.jazz/config.json`:
+
+```json
+{
+  "mcpServers": {
+    "notion": {
+      "url": "https://mcp.notion.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${NOTION_TOKEN}"
+      }
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
+    },
+    "postgres": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres"],
+      "env": {
+        "DATABASE_URL": "postgresql://user:pass@localhost/mydb"
+      }
+    }
+  }
+}
+```
+
+<Tip>
+Use `${VAR_NAME}` for environment variables. Jazz will resolve them from your shell environment.
+</Tip>
+
+### List configured servers
+
+```bash
+jazz mcp list
+```
+
+Shows all configured MCP servers and their status.
+
+## Using MCP tools
+
+Once configured, MCP tools appear in the agent's tool list automatically:
+
+```bash
+jazz
+> Search my Notion workspace for "project roadmap"
+
+# Agent sees notion_search tool from MCP server
+# Calls the tool
+# Returns results from Notion
+```
+
+Agents discover and use MCP tools like any other tool—no special syntax required.
+
+### List available MCP tools
+
+During a conversation:
+
+```bash
+/tools
+```
+
+This shows all tools, including those from MCP servers.
+
+## MCP server implementation
+
+From `src/services/mcp/mcp-server-manager.ts`, here's how Jazz manages MCP connections:
+
+### Connection management
+
+```typescript
+// Connect to an MCP server
+connectServer(config: MCPServerConfig): Effect.Effect<MCPClient, MCPConnectionError> {
+  // Create transport (stdio or HTTP)
+  // Connect with retry logic
+  // Return client
+}
+
+// Get tools from a connected server
+getServerTools(serverName: string): Effect.Effect<MCPTool[], MCPToolDiscoveryError> {
+  // Query server for available tools
+  // Normalize tool definitions
+  // Return tools
+}
+
+// Disconnect when done
+disconnectServer(serverName: string): Effect.Effect<void, MCPDisconnectionError> {
+  // Close client connection
+  // Clean up resources
+}
+```
+
+### Lazy connection
+
+MCP servers connect only when needed:
+
+```typescript
+// From agent-runner.ts:89-99
+// Register MCP tools for this agent if needed (only connects to relevant servers)
+const connectedMCPServers = yield* registerMCPToolsForAgent(agentToolNames).pipe(
+  Effect.catchAll((error) =>
+    Effect.gen(function* () {
+      const logger = yield* LoggerServiceTag;
+      yield* logger.warn(`Failed to register MCP tools: ${error.message}`);
+      // Continue even if MCP registration fails - tools might not be needed
+      return [];
+    }),
+  ),
+);
+```
+
+This prevents:
+- Slow startup (servers connect on-demand)
+- Hanging processes (only connects when agent needs the tools)
+- Resource waste (doesn't connect to unused servers)
+
+### Retry logic
+
+```typescript
+// From mcp-server-manager.ts:109-136
+const client = yield* retryWithBackoff(connectEffect, {
+  maxRetries: 3,
+  initialDelayMs: 1000,
+  maxDelayMs: 10_000,
+  shouldRetry: (error: unknown) => {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return (
+      errorMessage.includes("ECONNREFUSED") ||
+      errorMessage.includes("ETIMEDOUT") ||
+      errorMessage.includes("timeout") ||
+      errorMessage.includes("connection")
+    );
+  },
+});
+```
+
+MCP connections retry on transient failures (network issues, timeouts) but fail fast on configuration errors.
+
+## Popular MCP servers
+
+### Official servers
+
+| Server | Purpose | Install |
+|--------|---------|----------|
+| `@modelcontextprotocol/server-github` | GitHub repos, issues, PRs | `npx -y @modelcontextprotocol/server-github` |
+| `@modelcontextprotocol/server-postgres` | Postgres database access | `npx -y @modelcontextprotocol/server-postgres` |
+| `@modelcontextprotocol/server-sqlite` | SQLite database access | `npx -y @modelcontextprotocol/server-sqlite` |
+| `@modelcontextprotocol/server-filesystem` | Enhanced file operations | `npx -y @modelcontextprotocol/server-filesystem` |
+| `@modelcontextprotocol/server-google-drive` | Google Drive integration | `npx -y @modelcontextprotocol/server-google-drive` |
+
+### Community servers
+
+| Server | Purpose | More Info |
+|--------|---------|------------|
+| Notion | Notion workspace access | [mcp.notion.com](https://mcp.notion.com) |
+| Slack | Slack channel integration | [MCP Slack Server](https://github.com/modelcontextprotocol/servers/tree/main/src/slack) |
+| MongoDB | MongoDB database access | [Community MCP Servers](https://github.com/modelcontextprotocol) |
+| Airtable | Airtable base integration | [MCP Airtable Server](https://github.com/modelcontextprotocol) |
+
+<Info>
+Browse the [MCP Servers Registry](https://github.com/modelcontextprotocol/servers) for the full list of community servers.
+</Info>
+
+## Configuration examples
+
+### GitHub integration
+
+```json
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+**Setup**:
+1. Create a [GitHub Personal Access Token](https://github.com/settings/tokens)
+2. Export: `export GITHUB_TOKEN=ghp_...`
+3. Add config to `~/.jazz/config.json`
+
+**Usage**:
+```bash
+jazz
+> List all open issues in my repo with "bug" label
+> Create a new issue titled "Fix login error" in myuser/myrepo
+```
+
+### Notion integration
+
+```json
+{
+  "mcpServers": {
+    "notion": {
+      "url": "https://mcp.notion.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${NOTION_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+**Setup**:
+1. Get API key from [Notion Integrations](https://www.notion.so/my-integrations)
+2. Share pages/databases with your integration
+3. Export: `export NOTION_TOKEN=secret_...`
+4. Add config to `~/.jazz/config.json`
+
+**Usage**:
+```bash
+jazz
+> Search my Notion workspace for "meeting notes from last week"
+> Create a new page in my Projects database
+```
+
+### Postgres database
+
+```json
+{
+  "mcpServers": {
+    "postgres": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres"],
+      "env": {
+        "DATABASE_URL": "postgresql://user:password@localhost:5432/mydb"
+      }
+    }
+  }
+}
+```
+
+**Usage**:
+```bash
+jazz
+> Show me all users who signed up in the last 7 days
+> Count total orders by status
+> Create a new table for storing analytics events
+```
+
+<Warning>
+Be cautious with database access. Agents can execute any SQL query. Use read-only credentials when possible.
+</Warning>
+
+### Multiple servers
+
+Configure multiple services:
+
+```json
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
+    },
+    "notion": {
+      "url": "https://mcp.notion.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${NOTION_TOKEN}"
+      }
+    },
+    "postgres": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres"],
+      "env": {
+        "DATABASE_URL": "${DATABASE_URL}"
+      }
+    }
+  }
+}
+```
+
+Agents can use tools from all configured servers in a single conversation:
+
+```bash
+jazz
+> Check GitHub for recent issues, search Notion for related docs, then query Postgres for usage stats
+```
+
+## Building custom MCP servers
+
+Create your own MCP server to expose custom services:
+
+### Basic server structure
+
+```typescript
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+
+// Create server
+const server = new Server(
+  {
+    name: "my-custom-server",
+    version: "1.0.0",
+  },
+  {
+    capabilities: {
+      tools: {},
+    },
+  }
+);
+
+// Register tools
+server.setRequestHandler("tools/list", async () => {
+  return {
+    tools: [
+      {
+        name: "my_custom_tool",
+        description: "Does something useful",
+        inputSchema: {
+          type: "object",
+          properties: {
+            query: {
+              type: "string",
+              description: "The query parameter",
+            },
+          },
+          required: ["query"],
+        },
+      },
+    ],
+  };
+});
+
+// Handle tool calls
+server.setRequestHandler("tools/call", async (request) => {
+  if (request.params.name === "my_custom_tool") {
+    const result = await doSomething(request.params.arguments.query);
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(result),
+        },
+      ],
+    };
+  }
+});
+
+// Start server
+const transport = new StdioServerTransport();
+await server.connect(transport);
+```
+
+### Add to Jazz
+
+```json
+{
+  "mcpServers": {
+    "my-server": {
+      "command": "node",
+      "args": ["/path/to/my-server.js"]
+    }
+  }
+}
+```
+
+See [MCP SDK Documentation](https://modelcontextprotocol.io/docs/sdk) for complete server development guides.
+
+## Security considerations
+
+### Credential management
+
+- **Use environment variables**: Don't hardcode secrets in config
+- **Rotate tokens**: Regularly update API keys and tokens
+- **Minimal permissions**: Use read-only credentials when possible
+- **Audit access**: Review what tools agents can access
+
+### Connection security
+
+- **HTTPS only**: Use secure URLs for HTTP transport
+- **Verify certificates**: Don't disable SSL verification
+- **Network isolation**: Run sensitive MCP servers in isolated environments
+- **Rate limiting**: Monitor and limit API calls
+
+### Tool access control
+
+Limit which agents can use MCP tools:
+
+```json
+// Agent configuration
+{
+  "tools": ["github", "notion"]  // Only these MCP servers
+}
+```
+
+Or use specific tool names:
+
+```json
+{
+  "tools": ["github_list_issues", "notion_search"]  // Specific tools only
+}
+```
+
+## Troubleshooting
+
+### Server won't connect
+
+1. **Check command**: Verify the command/path exists
+   ```bash
+   npx -y @modelcontextprotocol/server-github
+   ```
+
+2. **Check environment variables**: Ensure they're exported
+   ```bash
+   echo $GITHUB_TOKEN
+   ```
+
+3. **Check logs**: Run Jazz with debug output
+   ```bash
+   DEBUG=* jazz
+   ```
+
+4. **Test server directly**: Run the MCP server standalone
+   ```bash
+   GITHUB_TOKEN=... npx -y @modelcontextprotocol/server-github
+   ```
+
+### Tools not appearing
+
+1. **List MCP servers**: Verify server is configured
+   ```bash
+   jazz mcp list
+   ```
+
+2. **Check agent tools**: Ensure agent has access
+   ```bash
+   # In config: "tools": ["all"] or "tools": ["github"]
+   ```
+
+3. **Refresh tools**: Restart Jazz to re-discover tools
+
+### Connection errors
+
+- **Timeout**: Increase retry settings or check network
+- **Auth failed**: Verify API keys and tokens
+- **Command not found**: Check `npx` is installed and in PATH
+- **Port conflicts**: Ensure no other process uses the MCP port
+
+## MCP server manager API
+
+For programmatic access:
+
+```typescript
+import { MCPServerManagerTag } from "@/core/interfaces/mcp-server";
+
+// Connect to server
+const client = yield* MCPServerManagerTag.pipe(
+  Effect.flatMap((manager) => manager.connectServer(config))
+);
+
+// Get tools from server
+const tools = yield* MCPServerManagerTag.pipe(
+  Effect.flatMap((manager) => manager.getServerTools("github"))
+);
+
+// Disconnect
+yield* MCPServerManagerTag.pipe(
+  Effect.flatMap((manager) => manager.disconnectServer("github"))
+);
+
+// List all configured servers
+const servers = yield* MCPServerManagerTag.pipe(
+  Effect.flatMap((manager) => manager.listServers())
+);
+
+// Disconnect all
+yield* MCPServerManagerTag.pipe(
+  Effect.flatMap((manager) => manager.disconnectAllServers())
+);
+```
+
+## Best practices
+
+### Start small
+
+Begin with one MCP server:
+
+```json
+{
+  "mcpServers": {
+    "github": { /* config */ }
+  }
+}
+```
+
+Verify it works before adding more.
+
+### Document credentials
+
+Maintain a README with required environment variables:
+
+```markdown
+# Required Environment Variables
+
+- `GITHUB_TOKEN`: GitHub personal access token (repo scope)
+- `NOTION_TOKEN`: Notion integration token
+- `DATABASE_URL`: Postgres connection string
+```
+
+### Use tool allowlists
+
+Create agents with specific MCP access:
+
+```bash
+# Research agent - only needs web access
+jazz agent create researcher --tools web-search,http-request
+
+# Data agent - needs database access
+jazz agent create data-analyst --tools postgres
+
+# Integration agent - needs multiple services
+jazz agent create integrations --tools github,notion,slack
+```
+
+### Monitor usage
+
+Track which MCP tools are used:
+- Review agent logs
+- Monitor API usage in external services
+- Set up rate limiting
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Agents" icon="robot" href="/concepts/agents">
+    Configure agents to use MCP tools
+  </Card>
+  <Card title="Tools" icon="wrench" href="/core/tools">
+    Explore built-in and MCP tools
+  </Card>
+  <Card title="MCP SDK" icon="code" href="https://modelcontextprotocol.io/docs/sdk">
+    Build custom MCP servers
+  </Card>
+  <Card title="MCP Registry" icon="book" href="https://github.com/modelcontextprotocol/servers">
+    Browse community MCP servers
+  </Card>
+</CardGroup>

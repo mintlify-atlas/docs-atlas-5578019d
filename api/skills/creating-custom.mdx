@@ -1,0 +1,443 @@
+---
+title: Creating custom skills
+description: Build your own skills to teach Jazz your workflows
+---
+
+You can create your own skills to teach Jazz your specific workflows, conventions, and domain expertise. Skills can be project-specific or global across all your projects.
+
+## Skill structure
+
+Every skill is a directory with at least one file:
+
+```
+skill-name/
+├── SKILL.md              # Required - main instructions
+├── references/           # Optional - detailed documentation
+│   ├── patterns.md
+│   └── examples.md
+└── scripts/              # Optional - utility scripts
+    └── helper.sh
+```
+
+### Storage locations
+
+| Type     | Path                         | Scope                     |
+|----------|------------------------------|---------------------------|
+| Global   | `~/.jazz/skills/skill-name/` | Available in all projects |
+| Project  | `./skills/skill-name/`       | Project-specific          |
+| Built-in | Ships with Jazz              | Cannot be modified        |
+
+**Priority**: Local overrides global, global overrides built-in. If you create `./skills/todo/SKILL.md` in your project, it replaces the built-in `todo` skill for that project only.
+
+## SKILL.md format
+
+Every skill requires a `SKILL.md` with YAML frontmatter:
+
+```markdown
+---
+name: your-skill-name
+description: Brief description of what this skill does and when to use it
+---
+
+# Your Skill Name
+
+Clear explanation of what this skill does.
+
+## When to use
+
+- Scenario 1
+- Scenario 2
+- Scenario 3
+
+## Steps
+
+1. Do X
+2. Do Y
+3. Output in format Z
+
+## Examples
+
+...
+```
+
+### Required metadata
+
+<ParamField path="name" type="string" required>
+  Unique identifier. Max 64 chars, lowercase letters/numbers/hyphens only.
+  
+  Examples: `code-review`, `deep-research`, `custom-workflow`
+</ParamField>
+
+<ParamField path="description" type="string" required>
+  Clear description of what the skill does and when to use it. Max 1024 chars.
+  
+  This is the **most important field** — it determines when Jazz applies the skill.
+  
+  **Best practices**:
+  - Write in third person: "Processes data files" (not "I can help you")
+  - Include trigger terms: "Use when releasing, creating changelogs, or preparing release documentation"
+  - Be specific about WHAT and WHEN
+  
+  **Good**: "Generate release notes from git commits. Use when releasing, creating changelogs, or preparing release documentation."
+  
+  **Bad**: "Helps with releases"
+</ParamField>
+
+## Writing effective descriptions
+
+The description determines when Jazz loads your skill. Follow these guidelines:
+
+### Include trigger terms
+
+Add words and phrases that should activate the skill:
+
+```yaml
+description: Review code for quality, security, and style. Use when reviewing PRs, giving feedback on code, or auditing code quality.
+```
+
+Trigger terms: "review", "PR", "feedback", "code quality", "audit"
+
+### Be specific
+
+```yaml
+# Good
+description: Conduct comprehensive multi-source research for complex questions. Use when the user asks a complicated question requiring multiple sources, in-depth analysis, cross-referencing, or expert-level research reports.
+
+# Bad
+description: Help with research tasks.
+```
+
+### Include both WHAT and WHEN
+
+- **WHAT**: The skill's capabilities
+- **WHEN**: Trigger scenarios and use cases
+
+```yaml
+description: Create and track task lists for complex multi-step work. Use when planning projects, breaking down work, tracking progress, or when a task has 3+ steps. Triggers on "plan", "todo", "task list", "break down", "step by step".
+```
+
+## Authoring principles
+
+### 1. Be concise
+
+Context window is shared. Only add information Jazz doesn't already know.
+
+<CodeGroup>
+```markdown Good
+## Generate report
+
+Use pandas for data analysis:
+
+\`\`\`python
+import pandas as pd
+df = pd.read_csv("data.csv")
+\`\`\`
+```
+
+```markdown Bad
+## Generate report
+
+Data analysis is important for understanding patterns.
+There are many ways to analyze data, but we recommend
+using Python because it has many libraries...
+```
+</CodeGroup>
+
+### 2. Keep SKILL.md under 500 lines
+
+For detailed content, use separate files in a `references/` directory:
+
+```markdown
+## Additional resources
+
+- For API details, see [references/api.md](references/api.md)
+- For examples, see [references/examples.md](references/examples.md)
+```
+
+The agent will load these only when needed using `load_skill_section`.
+
+### 3. Choose the right detail level
+
+| Freedom           | When                      | Example                |
+|-------------------|---------------------------|------------------------|
+| High (text)       | Multiple valid approaches | Code review guidelines |
+| Medium (template) | Preferred pattern         | Report generation      |
+| Low (script)      | Consistency critical      | Database migrations    |
+
+## Common patterns
+
+### Template pattern
+
+Provide a structure to follow:
+
+```markdown
+## Report structure
+
+\`\`\`markdown
+# [Title]
+
+## Summary
+[Overview]
+
+## Findings
+- Finding 1
+- Finding 2
+
+## Recommendations
+1. Action 1
+2. Action 2
+\`\`\`
+```
+
+### Workflow pattern
+
+Define step-by-step process:
+
+```markdown
+## Workflow
+
+1. **Step 1**: Analyze input
+   - Check file format
+   - Validate schema
+
+2. **Step 2**: Process data
+   - Transform fields
+   - Apply business logic
+
+3. **Step 3**: Generate output
+   - Format results
+   - Write to file
+
+4. **Step 4**: Validate results
+   - Run quality checks
+   - Compare with expected output
+```
+
+### Conditional pattern
+
+Guide decision-making:
+
+```markdown
+## Choose workflow
+
+**Creating new?** → Follow "Creation" section below
+**Editing existing?** → Follow "Edit" section below
+
+### Creation
+...
+
+### Edit
+...
+```
+
+## Using the skill-creator skill
+
+The easiest way to create a skill is to use the built-in `skill-creator` skill:
+
+```
+> Create a skill for generating API documentation from OpenAPI specs
+```
+
+The skill-creator will:
+1. Ask clarifying questions about purpose, location, triggers, and requirements
+2. Generate the proper directory structure
+3. Create SKILL.md with valid frontmatter
+4. Set up any needed reference files
+
+## Creation workflow
+
+### Phase 1: Discovery
+
+Define what the skill should do:
+
+- **Purpose**: What specific task or workflow should this automate?
+- **Location**: Global (`~/.jazz/skills/`) or project-specific (`./skills/`)?
+- **Triggers**: What phrases or scenarios should activate it?
+- **Domain knowledge**: What specialized information is needed?
+- **Output format**: Are there specific templates or formats required?
+
+### Phase 2: Design
+
+1. Draft skill name (lowercase, hyphens, max 64 chars)
+2. Write specific description with trigger terms
+3. Outline main sections (when to use, steps, examples)
+4. Identify supporting files needed (references, scripts)
+
+### Phase 3: Implementation
+
+1. Create directory: `mkdir -p ~/.jazz/skills/your-skill-name`
+2. Write SKILL.md with frontmatter and instructions
+3. Create supporting files in `references/` if needed
+4. Add utility scripts in `scripts/` if needed
+
+### Phase 4: Verification
+
+Check your skill:
+
+- [ ] SKILL.md under 500 lines
+- [ ] Description is specific with trigger terms
+- [ ] Consistent terminology throughout
+- [ ] References are one level deep (no nested references)
+- [ ] Skill can be discovered with `/skills` in chat
+- [ ] Skill loads correctly when triggered
+
+## Complete example
+
+Here's a complete custom skill for generating API documentation:
+
+**Directory structure:**
+```
+~/.jazz/skills/api-docs/
+├── SKILL.md
+├── references/
+│   └── openapi-patterns.md
+└── scripts/
+    └── generate-examples.sh
+```
+
+**SKILL.md:**
+```markdown
+---
+name: api-docs
+description: Generate API documentation from OpenAPI specs. Use when documenting REST APIs, creating API reference pages, or converting OpenAPI/Swagger specs to markdown. Triggers on "API docs", "OpenAPI", "Swagger", "document endpoints".
+---
+
+# API Documentation Generator
+
+Generate comprehensive API documentation from OpenAPI/Swagger specifications.
+
+## When to use
+
+- You have an OpenAPI/Swagger spec file
+- You need markdown API documentation
+- You want to keep API docs in sync with spec
+- You're creating an API reference section
+
+## Steps
+
+1. **Locate the OpenAPI spec**
+   - Check common locations: `openapi.yaml`, `swagger.json`, `api/spec.yaml`
+   - Ask user if not found
+
+2. **Parse the spec**
+   - Read and validate OpenAPI format
+   - Extract endpoints, schemas, parameters
+
+3. **Generate documentation**
+   - Create one page per tag/resource
+   - Include request/response examples
+   - Document authentication
+   - List all parameters and schemas
+
+4. **Format output**
+   - Use consistent markdown structure
+   - Include code examples in multiple languages
+   - Add navigation between pages
+
+## Output structure
+
+\`\`\`markdown
+# API Reference
+
+## Authentication
+[Auth details]
+
+## Endpoints
+
+### GET /users
+[Description]
+
+**Parameters:**
+- `limit` (integer, optional): Max results
+- `offset` (integer, optional): Pagination offset
+
+**Response:**
+\`\`\`json
+{
+  "users": [...],
+  "total": 100
+}
+\`\`\`
+\`\`\`
+
+## Additional resources
+
+- For OpenAPI patterns, see [references/openapi-patterns.md](references/openapi-patterns.md)
+- To auto-generate examples, run `scripts/generate-examples.sh`
+```
+
+## Anti-patterns to avoid
+
+<Warning>
+  Avoid these common mistakes:
+  
+  - ❌ Windows paths (`scripts\helper.py`) — use Unix paths (`scripts/helper.py`)
+  - ❌ Too many options without defaults — provide sensible defaults
+  - ❌ Time-sensitive information in SKILL.md — keep it evergreen
+  - ❌ Inconsistent terminology — use same terms throughout
+  - ❌ Vague names (`helper`, `utils`) — be specific
+  - ❌ First-person descriptions ("I can help") — use third person
+</Warning>
+
+## Testing your skill
+
+1. **List skills**: In Jazz chat, type `/skills` and verify your skill appears
+2. **Check description**: Ensure the description clearly indicates when to use it
+3. **Test loading**: Ask Jazz something that should trigger the skill
+4. **Verify behavior**: Confirm the skill loads and Jazz follows the instructions
+5. **Iterate**: Refine the description and instructions based on how it performs
+
+## Sharing skills
+
+### Export a skill
+
+```bash
+# Create a tarball
+cd ~/.jazz/skills
+tar -czf my-skill.tar.gz my-skill/
+
+# Share the file
+```
+
+### Install a shared skill
+
+```bash
+# Extract to global skills directory
+cd ~/.jazz/skills
+tar -xzf my-skill.tar.gz
+
+# Or extract to project skills directory
+cd /path/to/project
+mkdir -p skills
+cd skills
+tar -xzf my-skill.tar.gz
+```
+
+### Share via git
+
+You can version control your skills:
+
+```bash
+# In a git repo
+cd ~/.jazz/skills
+git init
+git add .
+git commit -m "Add custom skills"
+git remote add origin https://github.com/you/jazz-skills
+git push
+
+# Others can clone
+cd ~/.jazz
+git clone https://github.com/you/jazz-skills skills
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Built-in skills" icon="stars" href="/api/skills/built-in">
+    Study built-in skills as examples
+  </Card>
+  <Card title="Skills overview" icon="book" href="/api/skills/overview">
+    Learn more about how skills work
+  </Card>
+</CardGroup>

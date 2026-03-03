@@ -1,0 +1,446 @@
+---
+title: Using skills
+description: Extend your agents with packaged expertise for complex tasks like deep research, code review, and documentation
+---
+
+Skills are packaged expertise your agent loads on demand—proven playbooks for complex tasks instead of winging it every time. Think deep research with multi-source verification, structured code review, meeting notes that follow your format, or PR descriptions that match your conventions.
+
+## What are skills?
+
+A skill is a specialized instruction set that teaches your agent how to handle specific types of work:
+
+- **Deep research** - Multi-source verification, query decomposition, citation tracking
+- **Code review** - Security analysis, best practices, TypeScript patterns
+- **Email triage** - Categorization, prioritization, automated responses
+- **Documentation** - Structured writing, API reference generation, examples
+
+Instead of generic AI responses, skills provide domain expertise and consistent workflows.
+
+## Built-in skills
+
+Jazz ships with 20+ production-ready skills:
+
+### Development
+
+- **code-review** - Security analysis, performance checks, best practices
+- **commit-message** - Semantic commit messages following conventions
+- **pr-description** - Generate PR descriptions from git diff
+- **documentation** - Technical writing and API documentation
+- **boilerplate** - Code generation templates
+
+### Research & Writing
+
+- **deep-research** - Multi-source research with verification pipelines
+- **meeting-notes** - Structured meeting summaries
+- **journal** - Daily journaling and reflection
+- **decision-log** - Document important decisions and trade-offs
+
+### Productivity
+
+- **email** - Email triage and response drafting
+- **calendar** - Schedule management and conflict resolution
+- **todo** - Task planning and progress tracking
+- **digest** - Daily news and content summaries
+
+### Knowledge Management
+
+- **obsidian** - Obsidian vault management, note linking, canvas creation
+- **browser-use** - Web automation and data extraction
+
+### Domain-Specific
+
+- **budget** - Financial planning and expense tracking
+- **investment-analysis** - Market research and portfolio analysis
+- **startup-brainstorm** - Idea validation and business planning
+- **persona** - Character and personality development
+
+## Using skills
+
+### Browse available skills
+
+In any chat session:
+
+```
+/skills
+```
+
+Shows all available skills with descriptions and trigger patterns.
+
+### Automatic activation
+
+Skills activate automatically when you ask relevant questions:
+
+<CodeGroup>
+```bash Deep Research
+> Do comprehensive research on WebAssembly performance in 2024
+
+🔬 Activating skill: deep-research
+```
+
+```bash Code Review
+> Review the changes in my current branch for security issues
+
+👀 Activating skill: code-review
+```
+
+```bash Email Triage
+> Summarize my unread emails and archive newsletters
+
+📧 Activating skill: email
+```
+</CodeGroup>
+
+### Manual activation
+
+Explicitly request a skill:
+
+```
+> Use the deep-research skill to analyze competitors in the AI coding space
+```
+
+## Skill structure
+
+Skills are stored as `SKILL.md` files:
+
+```
+skills/
+├── deep-research/
+│   ├── SKILL.md                    # Main skill instructions
+│   └── references/
+│       ├── query-decomposition.md  # Supporting documentation
+│       └── verification-patterns.md
+├── code-review/
+│   └── SKILL.md
+└── email/
+    ├── SKILL.md
+    └── references/
+        └── providers.md
+```
+
+Source: `skills/` directory structure
+
+## Example: Deep research skill
+
+The deep-research skill provides a comprehensive research pipeline:
+
+### Workflow phases
+
+<Steps>
+  <Step title="Query decomposition">
+    Breaks complex questions into atomic sub-questions:
+
+    ```
+    Original: "How will AI impact healthcare costs in the next decade?"
+
+    Sub-questions:
+    1. What are current AI applications in healthcare?
+    2. What cost savings have been documented?
+    3. What are projected AI adoption rates?
+    4. What barriers exist to AI adoption?
+    5. What do expert forecasts predict?
+    ```
+
+    Source: `skills/deep-research/SKILL.md:46-74`
+  </Step>
+
+  <Step title="Research planning">
+    Creates a structured search strategy:
+
+    - Prioritizes sub-questions (critical → high → medium → low)
+    - Plans parallel vs sequential searches
+    - Defines source requirements (academic, official, expert, news)
+    - Sets confidence targets
+
+    Source: `skills/deep-research/SKILL.md:96-125`
+  </Step>
+
+  <Step title="Parallel search execution">
+    Executes searches efficiently:
+
+    - Batches 3-5 independent queries
+    - Diverse source strategy to avoid echo chambers
+    - Tracks search budget (aim for 10-20 total searches)
+    - Records publication dates and source types
+
+    Source: `skills/deep-research/SKILL.md:133-162`
+  </Step>
+
+  <Step title="Iterative verification">
+    Critical verification phase:
+
+    - Is each claim supported by 2+ sources?
+    - Do sources have different biases?
+    - Are there credible contradictions?
+    - What's missing that would change conclusions?
+
+    Source: `skills/deep-research/SKILL.md:169-200`
+  </Step>
+
+  <Step title="Synthesis & reporting">
+    Generates comprehensive report:
+
+    - Executive summary with confidence level
+    - Key findings with citations
+    - Analysis and interpretation
+    - Limitations and gaps
+    - **Full sources list** for verification
+
+    Source: `skills/deep-research/SKILL.md:219-273`
+  </Step>
+</Steps>
+
+### Time awareness
+
+The skill respects temporal constraints:
+
+- User specifies "this year" → restricts sources to 2024
+- User specifies "recent studies" → prioritizes last 2-3 years
+- No time frame given → uses most recent information
+
+Source: `skills/deep-research/SKILL.md:19-29`
+
+### Quality checklist
+
+Before delivering, the skill ensures:
+
+- ✅ All sub-questions addressed
+- ✅ Every claim has citation
+- ✅ Contradictions acknowledged
+- ✅ Confidence levels stated
+- ✅ Sources are diverse and credible
+- ✅ Full sources list included
+
+Source: `skills/deep-research/SKILL.md:313-323`
+
+## Example: Todo skill
+
+The todo skill helps plan and track multi-step work:
+
+### When to use
+
+**Create todos when:**
+- Task has 3+ distinct steps
+- Work spans multiple files or systems
+- User asks for a plan or breakdown
+- Complex debugging or investigation
+
+**Skip todos for:** single-step tasks, quick lookups
+
+Source: `skills/todo/SKILL.md:11-20`
+
+### Workflow
+
+<Steps>
+  <Step title="Task start">
+    ```
+    1. Analyze the request
+    2. Call manage_todos with all planned steps (status: pending)
+    3. Tell the user the plan
+    4. Mark first item in_progress
+    ```
+  </Step>
+
+  <Step title="During execution">
+    ```
+    1. Work through items in dependency order
+    2. After finishing an item, mark it completed and next one in_progress
+    3. If you discover new steps, add them to the list
+    4. If an item is blocked, set it to cancelled with explanation
+    ```
+  </Step>
+
+  <Step title="Task end">
+    ```
+    1. Call list_todos to verify everything is completed or cancelled
+    2. Summarize what was accomplished
+    3. Note any skipped items
+    ```
+  </Step>
+</Steps>
+
+Source: `skills/todo/SKILL.md:45-65`
+
+## Installing community skills
+
+Jazz follows the [.agents convention](https://agentskills.io), so any compatible skill works:
+
+### From the ecosystem
+
+```bash
+npx skills add
+```
+
+Browse and install skills from the community.
+
+### Manual installation
+
+Drop a skill in the skills directory:
+
+```bash
+# Global (all agents)
+~/.jazz/skills/my-skill/SKILL.md
+
+# Project-local (current project only)
+./skills/my-skill/SKILL.md
+```
+
+### Project-local vs global
+
+- **Global skills** (`~/.jazz/skills/`) - Available to all agents
+- **Project skills** (`./skills/`) - Available only in current directory
+
+Project skills override global skills with the same name.
+
+## Creating custom skills
+
+Create a `SKILL.md` file with YAML frontmatter:
+
+```markdown
+---
+name: my-custom-skill
+description: Brief description of what this skill does
+---
+
+# Skill Instructions
+
+Detailed instructions for the agent...
+
+## When to Activate
+
+Trigger patterns: "keywords", "phrases", or use cases.
+
+## Workflow
+
+1. Step one
+2. Step two
+3. Step three
+
+## Examples
+
+Provide concrete examples...
+```
+
+### Skill frontmatter
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | Yes | Unique identifier (lowercase, hyphens) |
+| `description` | Yes | When and why to use this skill |
+
+### Best practices
+
+<Tip>
+  **Be specific about triggers** - List explicit keywords and use cases that should activate the skill.
+</Tip>
+
+<Tip>
+  **Provide examples** - Show concrete input/output examples so the agent understands the pattern.
+</Tip>
+
+<Tip>
+  **Use structured workflows** - Break complex processes into numbered steps or phases.
+</Tip>
+
+<Tip>
+  **Include anti-patterns** - Explicitly state what NOT to do to avoid common mistakes.
+</Tip>
+
+## Skill with reference files
+
+For complex skills, add supporting documentation:
+
+```
+my-skill/
+├── SKILL.md              # Main instructions
+└── references/
+    ├── frameworks.md     # Domain knowledge
+    ├── examples.md       # Detailed examples
+    └── patterns.md       # Reusable patterns
+```
+
+Reference files in the skill:
+
+```markdown
+## Additional Resources
+
+- For query strategies, see [references/query-patterns.md](references/query-patterns.md)
+- For output formats, see [references/output-templates.md](references/output-templates.md)
+```
+
+Source: `skills/deep-research/SKILL.md:622-624`
+
+## Advanced: Skill composition
+
+Skills can reference other skills:
+
+```markdown
+## Workflow
+
+1. Use the **deep-research** skill to gather information
+2. Use the **documentation** skill to format findings
+3. Use the **obsidian** skill to save to vault
+```
+
+The agent loads all referenced skills automatically.
+
+## Debugging skills
+
+### Check if a skill is loaded
+
+```
+/skills
+```
+
+Lists all active skills.
+
+### Verify skill location
+
+```bash
+# Global
+ls ~/.jazz/skills/
+
+# Project
+ls ./skills/
+```
+
+### Test skill activation
+
+Use explicit keywords from the skill's description:
+
+```
+> Do deep research on quantum computing
+```
+
+Should activate the deep-research skill.
+
+## Skill examples in practice
+
+### Example 1: Research report
+
+```
+> Use deep research to investigate the state of Rust async in 2024
+```
+
+Activates deep-research skill → query decomposition → parallel search → verification → comprehensive report with sources.
+
+### Example 2: Code review
+
+```
+> Review my changes for security issues and TypeScript best practices
+```
+
+Activates code-review skill → analyzes git diff → security analysis → best practices check → actionable feedback.
+
+### Example 3: Task planning
+
+```
+> Help me plan the implementation of OAuth2 login
+```
+
+Activates todo skill → breaks down into steps → creates task list → tracks progress.
+
+## Next steps
+
+- [Workflows](/guides/workflows) - Combine skills with scheduled automation
+- [MCP integration](/guides/mcp-integration) - Connect skills to external services
+- [Configuration](/guides/configuration) - Customize skill behavior

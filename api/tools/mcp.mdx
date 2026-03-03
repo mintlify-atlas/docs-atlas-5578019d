@@ -1,0 +1,483 @@
+---
+title: MCP tools
+description: Connect to Model Context Protocol servers and use their tools
+---
+
+MCP (Model Context Protocol) tools enable Jazz agents to connect to MCP servers and use their exposed tools seamlessly.
+
+## Overview
+
+The MCP integration provides:
+
+- **Lazy connection**: Servers connect automatically when their tools are first used
+- **Tool adaptation**: MCP tools are automatically adapted to Jazz's tool interface
+- **Schema conversion**: MCP JSON schemas are converted to Zod for validation
+- **Error handling**: Comprehensive error handling with tagged errors
+
+## Tool naming
+
+MCP tools are prefixed with the server name to avoid conflicts:
+
+```typescript
+// MCP server: mongodb
+// MCP tool: aggregate
+// Jazz tool: mcp_mongodb_aggregate
+
+// MCP server: filesystem
+// MCP tool: read_file
+// Jazz tool: mcp_filesystem_read_file
+```
+
+## Registration
+
+MCP tools are registered using the `registerMCPServerTools` function:
+
+```typescript
+import { registerMCPServerTools } from "@/core/agent/tools/mcp-tools";
+
+const serverConfig = {
+  name: "mongodb",
+  command: "npx",
+  args: ["-y", "@modelcontextprotocol/server-mongodb"],
+  env: {
+    MONGODB_URI: "mongodb://localhost:27017",
+  },
+};
+
+// Get MCP tools from server
+const mcpTools = yield* mcpManager.getServerTools("mongodb");
+
+// Register as Jazz tools
+const jazzTools = yield* registerMCPServerTools(serverConfig, mcpTools);
+
+for (const tool of jazzTools) {
+  yield* registerTool(tool);
+}
+```
+
+## Lazy connection
+
+MCP servers connect lazily when their tools are first used:
+
+```typescript
+// Server not connected yet
+const isConnected1 = yield* mcpManager.isConnected("mongodb");
+// false
+
+// Use an MCP tool
+const result = yield* mcpMongodbAggregate.handler(
+  {
+    collection: "users",
+    pipeline: [{ $match: { active: true } }],
+  },
+  context
+);
+
+// Server now connected
+const isConnected2 = yield* mcpManager.isConnected("mongodb");
+// true
+```
+
+The connection process:
+
+1. Check if server is connected
+2. If not, show connection progress to user
+3. Connect to server
+4. Show success message
+5. Execute tool
+
+## Schema conversion
+
+MCP JSON schemas are automatically converted to Zod:
+
+```typescript
+// MCP tool schema
+{
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "collection": {
+        "type": "string",
+        "description": "Collection name"
+      },
+      "pipeline": {
+        "type": "array",
+        "items": { "type": "object" }
+      }
+    },
+    "required": ["collection", "pipeline"]
+  }
+}
+
+// Converted to Zod
+z.object({
+  collection: z.string().describe("Collection name"),
+  pipeline: z.array(z.record(z.unknown()))
+}).required();
+```
+
+**Supported schema types:**
+
+- `string`, `number`, `integer`, `boolean`
+- `object`, `array`
+- `null`, `any`
+- `enum`, `const`
+- `oneOf`, `anyOf`, `allOf`
+- Pattern validation
+- Min/max constraints
+
+**Unsupported schemas:**
+
+If a schema cannot be converted, it defaults to an empty object schema to maintain LLM compatibility:
+
+```typescript
+// Invalid/unsupported schema
+z.object({})
+```
+
+## Error handling
+
+MCP tools use tagged errors for structured error reporting:
+
+### MCPToolExecutionError
+
+Thrown when tool execution fails:
+
+```typescript
+export class MCPToolExecutionError extends Data.TaggedError(
+  "MCPToolExecutionError"
+)<{
+  readonly serverName: string;
+  readonly toolName: string;
+  readonly reason: string;
+  readonly cause?: unknown;
+  readonly suggestion?: string;
+}> {}
+```
+
+**Example:**
+
+```typescript
+const result = yield* mcpTool.handler(args, context);
+
+if (!result.success) {
+  // Error format
+  {
+    success: false,
+    result: null,
+    error: "MCP tool execution failed: Connection refused"
+  }
+}
+```
+
+### Tool not found
+
+```typescript
+{
+  success: false,
+  result: null,
+  error: "Tool aggregate not found in MCP server mongodb. Available tools: find, insert, update"
+}
+```
+
+### Server connection failed
+
+```typescript
+{
+  success: false,
+  result: null,
+  error: "Failed to connect to MCP server: ENOENT: npx not found"
+}
+```
+
+## Tool execution
+
+MCP tools execute through the `executeMCPToolWithLazyConnection` function:
+
+```typescript
+function executeMCPToolWithLazyConnection(
+  serverConfig: MCPServerConfig,
+  toolName: string,
+  args: Record<string, unknown>,
+  context: ToolExecutionContext
+): Effect.Effect<ToolExecutionResult, Error, MCPToolDependencies>
+```
+
+**Execution flow:**
+
+1. Check server connection status
+2. Connect if needed (lazy connection)
+3. Get server tools
+4. Find requested tool
+5. Execute tool with arguments
+6. Handle MCP result format
+7. Return Jazz result
+
+## MCP result format
+
+MCP tools return results in a specific format:
+
+```typescript
+{
+  content: unknown,      // Tool result data
+  isError?: boolean      // Whether result is an error
+}
+```
+
+**Success result:**
+
+```typescript
+{
+  content: { data: [...] }
+}
+```
+
+**Error result:**
+
+```typescript
+{
+  content: "Database connection failed",
+  isError: true
+}
+```
+
+## Configuration
+
+MCP servers are configured in Jazz settings:
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "mongodb": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-mongodb"],
+        "env": {
+          "MONGODB_URI": "mongodb://localhost:27017"
+        }
+      },
+      "filesystem": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-filesystem", "~/Documents"]
+      }
+    }
+  }
+}
+```
+
+## Server lifecycle
+
+### Connection
+
+```typescript
+const mcpManager = yield* MCPServerManagerTag;
+
+const result = yield* mcpManager.connectServer(serverConfig);
+// Server process started
+// Tools registered
+```
+
+### Disconnection
+
+```typescript
+yield* mcpManager.disconnectServer("mongodb");
+// Server process terminated
+// Tools unregistered
+```
+
+### Status check
+
+```typescript
+const isConnected = yield* mcpManager.isConnected("mongodb");
+// true or false
+```
+
+### List servers
+
+```typescript
+const servers = yield* mcpManager.listServers();
+// [{ name: "mongodb", connected: true, toolCount: 5 }, ...]
+```
+
+## Best practices
+
+### Use descriptive server names
+
+```typescript
+// Good: Clear server purpose
+{
+  name: "mongodb_production",
+  command: "npx",
+  args: [...]
+}
+
+// Bad: Generic name
+{
+  name: "db",
+  command: "npx",
+  args: [...]
+}
+```
+
+### Configure environment variables
+
+```typescript
+{
+  name: "mongodb",
+  command: "npx",
+  args: ["-y", "@modelcontextprotocol/server-mongodb"],
+  env: {
+    MONGODB_URI: process.env.MONGODB_URI,
+    MONGODB_DB: "myapp",
+    MONGODB_TIMEOUT: "5000"
+  }
+}
+```
+
+### Handle connection errors gracefully
+
+```typescript
+const result = yield* mcpTool.handler(args, context).pipe(
+  Effect.catchAll((error) =>
+    Effect.gen(function* () {
+      yield* logger.error(`MCP tool failed: ${error.message}`);
+      // Fallback behavior
+      return { success: false, result: null, error: error.message };
+    })
+  )
+);
+```
+
+### Validate tool arguments
+
+MCP tools use Zod validation automatically:
+
+```typescript
+const result = yield* mcpTool.handler(
+  {
+    collection: "users",
+    pipeline: [{ $match: { active: true } }],
+    // Invalid argument will be caught by Zod
+  },
+  context
+);
+```
+
+### Monitor server health
+
+```typescript
+const servers = yield* mcpManager.listServers();
+
+for (const server of servers) {
+  if (!server.connected) {
+    yield* logger.warn(`MCP server ${server.name} is disconnected`);
+    // Attempt reconnection
+    yield* mcpManager.connectServer(serverConfig);
+  }
+}
+```
+
+## Common MCP servers
+
+### MongoDB
+
+```json
+{
+  "name": "mongodb",
+  "command": "npx",
+  "args": ["-y", "@modelcontextprotocol/server-mongodb"],
+  "env": {
+    "MONGODB_URI": "mongodb://localhost:27017"
+  }
+}
+```
+
+**Tools:** `find`, `insert`, `update`, `delete`, `aggregate`
+
+### Filesystem
+
+```json
+{
+  "name": "filesystem",
+  "command": "npx",
+  "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/allowed/dir"]
+}
+```
+
+**Tools:** `read_file`, `write_file`, `list_directory`, `move_file`, `search_files`
+
+### PostgreSQL
+
+```json
+{
+  "name": "postgres",
+  "command": "npx",
+  "args": ["-y", "@modelcontextprotocol/server-postgres"],
+  "env": {
+    "PGHOST": "localhost",
+    "PGPORT": "5432",
+    "PGDATABASE": "mydb",
+    "PGUSER": "user",
+    "PGPASSWORD": "password"
+  }
+}
+```
+
+**Tools:** `query`, `list_tables`, `describe_table`, `insert`, `update`
+
+### GitHub
+
+```json
+{
+  "name": "github",
+  "command": "npx",
+  "args": ["-y", "@modelcontextprotocol/server-github"],
+  "env": {
+    "GITHUB_TOKEN": "ghp_..."
+  }
+}
+```
+
+**Tools:** `create_issue`, `list_issues`, `create_pull_request`, `search_repositories`
+
+## Example usage
+
+```typescript
+import { registerMCPServerTools } from "@/core/agent/tools/mcp-tools";
+
+// Configure MongoDB MCP server
+const mongoConfig = {
+  name: "mongodb",
+  command: "npx",
+  args: ["-y", "@modelcontextprotocol/server-mongodb"],
+  env: {
+    MONGODB_URI: "mongodb://localhost:27017",
+  },
+};
+
+// Register tools
+const mcpManager = yield* MCPServerManagerTag;
+const mcpTools = yield* mcpManager.getServerTools("mongodb");
+const jazzTools = yield* registerMCPServerTools(mongoConfig, mcpTools);
+
+for (const tool of jazzTools) {
+  yield* registerTool(tool);
+}
+
+// Use MCP tool (server connects automatically)
+const result = yield* mcpMongodbAggregate.handler(
+  {
+    collection: "users",
+    pipeline: [
+      { $match: { active: true } },
+      { $group: { _id: "$country", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+    ],
+  },
+  context
+);
+
+if (result.success) {
+  console.log("Aggregation results:", result.result.content);
+}
+```

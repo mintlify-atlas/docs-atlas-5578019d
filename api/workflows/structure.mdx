@@ -1,0 +1,384 @@
+---
+title: Workflow file structure
+description: YAML frontmatter fields and content format for workflow definitions
+---
+
+Workflows are defined in Markdown files with YAML frontmatter. The frontmatter contains metadata and scheduling information, while the content below serves as the prompt for your agent.
+
+## File format
+
+A workflow file consists of two parts:
+
+1. **YAML frontmatter** (required): Metadata and configuration
+2. **Markdown content** (required): The prompt/instructions for the agent
+
+```markdown
+---
+name: email-cleanup
+description: Clean up newsletters and promotional emails
+schedule: "0 * * * *"
+autoApprove: low-risk
+agent: my-agent
+skills:
+  - email
+---
+
+# Email Cleanup
+
+Review my inbox from the last hour and archive low-value emails.
+
+[Your detailed instructions here...]
+```
+
+## Frontmatter fields
+
+### Required fields
+
+<ParamField path="name" type="string" required>
+  Unique identifier for the workflow. Used in CLI commands and scheduling.
+  
+  ```yaml
+  name: email-cleanup
+  ```
+</ParamField>
+
+<ParamField path="description" type="string" required>
+  Human-readable summary of what the workflow does. Displayed in workflow lists.
+  
+  ```yaml
+  description: Clean up newsletters and promotional emails from your inbox
+  ```
+</ParamField>
+
+### Optional fields
+
+<ParamField path="schedule" type="string">
+  Cron expression for scheduling. Five fields: minute, hour, day-of-month, month, day-of-week.
+  
+  ```yaml
+  schedule: "0 8 * * *"  # Daily at 8:00 AM
+  ```
+  
+  See [Scheduling](/api/workflows/scheduling) for cron format details.
+</ParamField>
+
+<ParamField path="agent" type="string">
+  Agent ID or name to use for this workflow. Defaults to user selection if not specified.
+  
+  ```yaml
+  agent: research-bot
+  ```
+</ParamField>
+
+<ParamField path="autoApprove" type="boolean | string">
+  Auto-approval policy for unattended runs. Can be:
+  - `false` or omitted: Always prompt for approval
+  - `read-only`: Auto-approve read-only tools
+  - `low-risk`: Auto-approve read-only + low-risk tools
+  - `high-risk` or `true`: Auto-approve all tools
+  
+  ```yaml
+  autoApprove: low-risk
+  ```
+  
+  See [Auto-approve policies](/api/workflows/scheduling#auto-approve-policies) for details.
+</ParamField>
+
+<ParamField path="skills" type="string[]">
+  Skills to load for this workflow. The agent will have access to these skills.
+  
+  ```yaml
+  skills:
+    - email
+    - calendar
+    - deep-research
+  ```
+</ParamField>
+
+<ParamField path="catchUpOnStartup" type="boolean">
+  Run missed workflows when Jazz starts. Requires `schedule` to be set.
+  
+  ```yaml
+  catchUpOnStartup: true
+  ```
+</ParamField>
+
+<ParamField path="maxCatchUpAge" type="number">
+  Maximum age (in seconds) for catch-up runs. Missed runs older than this won't be caught up.
+  
+  ```yaml
+  maxCatchUpAge: 43200  # 12 hours
+  ```
+</ParamField>
+
+<ParamField path="maxIterations" type="number">
+  Maximum agent iterations per run. Defaults to 50 if not specified.
+  
+  ```yaml
+  maxIterations: 100
+  ```
+</ParamField>
+
+## Content (the prompt)
+
+The content below the frontmatter is the prompt sent to the agent. Write it as if you're giving instructions to a human assistant.
+
+### Guidelines for writing prompts
+
+<Steps>
+  <Step title="Be specific about what to do">
+    Clearly define the task, expected inputs, and desired outputs.
+    
+    ```markdown
+    Review my inbox from the last hour and archive:
+    - Newsletters older than 2 weeks
+    - Promotional emails older than 3 days
+    - GitHub notifications I've already seen
+    ```
+  </Step>
+  
+  <Step title="Include safety guidelines">
+    Tell the agent how to handle uncertainty.
+    
+    ```markdown
+    **When in doubt, don't do anything.**
+    - Only perform actions you're 100% confident about
+    - Leave uncertain items for manual review
+    ```
+  </Step>
+  
+  <Step title="Specify output format and location">
+    If the workflow generates files, specify where to save them.
+    
+    ```markdown
+    Save the digest to: `$HOME/tech-digests/[YEAR]/[Month]/[DD].md`
+    ```
+  </Step>
+  
+  <Step title="Reference skills when applicable">
+    Mention specific skills if they should guide the workflow.
+    
+    ```markdown
+    Use the `deep-research` skill to investigate recent AI developments.
+    ```
+  </Step>
+</Steps>
+
+## Example workflows
+
+### Email cleanup (hourly)
+
+```markdown ~/workflows/email-cleanup/WORKFLOW.md
+---
+name: email-cleanup
+description: Clean up newsletters and promotional emails from your inbox
+schedule: "0 * * * *"
+autoApprove: low-risk
+skills:
+  - email
+---
+
+# Email Cleanup Workflow
+
+Review my inbox from the last hour and help me clean up low-value emails.
+
+## What to Clean
+
+1. **Newsletters I haven't read**: If there's a newsletter email that has been sitting unread for more than 2 weeks, archive it.
+
+2. **Promotional emails**: Archive any promotional/marketing emails that are older than 3 days.
+
+3. **Automated notifications**: Archive GitHub notification emails, CI/CD notifications, and similar automated emails that I've already seen.
+
+4. **Duplicate emails**: If there are multiple emails from the same sender about the same topic, keep only the most recent one.
+
+## What NOT to Touch
+
+- Personal emails from real people
+- Work-related emails with action items
+- Receipts or invoices
+- Emails marked as important
+- **ANY email you're uncertain about** - when in doubt, leave it alone
+
+## Safety Rules
+
+When in doubt, DO NOTHING.
+
+- Only archive emails when you are **highly confident** they match the criteria above
+- If an email could be important, personal, or work-related, skip it
+- Better to leave 10 safe-to-archive emails untouched than to archive 1 important email
+```
+
+### Morning weather briefing
+
+```markdown ~/workflows/weather-briefing/WORKFLOW.md
+---
+name: weather-briefing
+description: Morning weather check and outfit recommendations
+schedule: "0 7 * * *"
+autoApprove: read-only
+---
+
+# Morning Weather Briefing
+
+Check the weather forecast for today and provide practical recommendations.
+
+## Tasks
+
+1. **Get the weather forecast**: Look up the weather for my location for today. Include:
+   - Current temperature
+   - High/low for the day
+   - Precipitation chance
+   - Wind conditions
+   - Any weather alerts
+
+2. **Outfit recommendation**: Based on the weather, suggest what to wear:
+   - Do I need a jacket/coat?
+   - Should I bring an umbrella?
+   - Is it shorts weather or pants weather?
+   - Any accessories (sunglasses, scarf, hat)?
+
+3. **Activity considerations**: Note any weather-related considerations:
+   - Is it a good day for outdoor activities?
+   - Should I plan indoor alternatives?
+   - Any commute impacts (heavy rain, snow, etc.)?
+
+## Output Format
+
+Keep it brief and actionable - this is a quick morning glance, not a detailed report.
+
+Example:
+```
+🌡️ Today: 18°C → 26°C, Sunny
+
+👕 Wear: Light layers, sunglasses
+☔ No umbrella needed
+🚶 Great day for outdoor activities!
+```
+```
+
+### Daily tech digest
+
+```markdown ~/workflows/tech-digest/WORKFLOW.md
+---
+name: tech-digest
+description: Daily comprehensive AI & tech trends digest with deep research
+schedule: "0 8 * * *"
+autoApprove: true
+catchUpOnStartup: true
+skills:
+  - deep-research
+---
+
+# Daily Tech & AI Digest
+
+Generate a comprehensive daily digest of the most important developments in AI, technology, startups, and tech investments from the last 24 hours.
+
+## Research Scope
+
+Investigate these areas thoroughly:
+
+### 1. AI & Machine Learning
+- New model releases and benchmarks
+- Research breakthroughs (check Hugging Face Papers, arXiv)
+- Tool and framework updates
+- AI safety and policy developments
+
+### 2. Tech Industry News
+- Major product launches and updates
+- Company announcements and pivots
+- Tech layoffs or hiring trends
+- Regulatory news (EU, US, China)
+
+### 3. Startups & Investments
+- Funding rounds (Series A, B, C, etc.)
+- Notable acquisitions
+- New startup launches
+- VC trends and insights
+
+### 4. Developer & Open Source
+- Trending GitHub repositories
+- New developer tools
+- Framework updates (React, Next.js, Rust, etc.)
+- API launches
+
+## Sources to Check
+
+- **Twitter/X**: Tech influencers, AI researchers, VCs
+- **Reddit**: r/MachineLearning, r/artificial, r/technology, r/startups
+- **Hugging Face**: Daily Papers, trending models
+- **Hacker News**: Top stories from the last 24 hours
+- **TechCrunch**: Funding news, startup coverage
+- **GitHub Trending**: Hot repositories
+
+## Output Requirements
+
+Use the `deep-research` skill to conduct thorough multi-source research.
+
+Save the digest to: `$HOME/tech-digests/[YEAR]/[Month]/[DD].md`
+
+Focus on **signal over noise** - only include truly noteworthy items.
+```
+
+### Daily market analysis
+
+```markdown ~/workflows/market-analysis/WORKFLOW.md
+---
+name: market-analysis
+description: Daily comprehensive stock market and crypto analysis with investment insights
+schedule: "0 6 * * *"
+autoApprove: true
+catchUpOnStartup: true
+maxCatchUpAge: 43200
+skills:
+  - deep-research
+---
+
+# Daily Market Analysis
+
+Perform comprehensive market analysis covering major indices, individual stocks, and cryptocurrencies. Provide actionable insights for investment decisions.
+
+## Analysis Scope
+
+### 1. Major Indices & ETFs
+- **S&P 500 (SPY)**: Overall market health, sector performance
+- **NASDAQ (QQQ)**: Tech sector trends
+- **Dow Jones (DIA)**: Industrial strength
+- **VIX**: Market volatility and fear index
+
+### 2. Individual Stocks
+- **Tech Giants**: AAPL, MSFT, GOOGL, AMZN, META, NVDA
+- **EV & Innovation**: TSLA, RIVN
+- **AI Leaders**: NVDA, AMD, PLTR
+
+### 3. Cryptocurrencies
+- **Bitcoin (BTC)**: Price action, on-chain metrics, dominance
+- **Ethereum (ETH)**: Network activity, gas fees, DeFi trends
+- **Market Sentiment**: Fear & Greed Index
+
+## Research Sources
+
+- **Real-time data**: Yahoo Finance, Google Finance, TradingView
+- **News**: Bloomberg, Reuters, CNBC, Financial Times
+- **Sentiment**: Twitter/X (FinTwit), Reddit (r/wallstreetbets, r/stocks)
+- **Crypto**: CoinGecko, CoinMarketCap, Glassnode
+
+## Output Format
+
+Save analysis to: `$HOME/market-analysis/YYYY/MM/DD.md`
+
+Provide:
+1. **Executive Summary**: Quick market overview and buy/sell opportunities
+2. **Technical Analysis**: Price action, indicators (RSI, MACD, moving averages)
+3. **News & Catalysts**: Market-moving events
+4. **Investment Recommendations**: Specific buy/hold/sell calls with confidence levels
+5. **Risk Factors**: Key risks to watch
+
+**Disclaimer**: This analysis is for informational purposes only and should not be construed as financial advice.
+```
+
+## Next steps
+
+<Card title="Scheduling" icon="clock" href="/api/workflows/scheduling">
+  Learn about cron expressions, auto-approve policies, and catch-up behavior
+</Card>

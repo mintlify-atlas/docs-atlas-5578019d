@@ -1,0 +1,299 @@
+---
+title: MCP commands
+description: Manage Model Context Protocol server integrations
+---
+
+MCP (Model Context Protocol) commands let you connect Jazz agents to external services and data sources.
+
+## jazz mcp add
+
+Add an MCP server configuration.
+
+```bash
+jazz mcp add [json] [options]
+```
+
+**Arguments:**
+
+<ParamField path="json" type="string">
+  Optional inline JSON configuration
+</ParamField>
+
+**Options:**
+
+<ParamField path="-f, --file" type="string">
+  Read MCP server JSON from a file
+</ParamField>
+
+### Add methods
+
+<Tabs>
+  <Tab title="Interactive">
+    Run without arguments to add a server interactively:
+    
+    ```bash
+    jazz mcp add
+    ```
+    
+    You'll be prompted to paste your MCP server JSON configuration.
+  </Tab>
+  
+  <Tab title="From file">
+    Load configuration from a JSON file:
+    
+    ```bash
+    jazz mcp add --file mcp-config.json
+    ```
+  </Tab>
+  
+  <Tab title="Inline">
+    Pass JSON directly as an argument:
+    
+    ```bash
+    jazz mcp add '{"github":{"command":"npx","args":["-y","@modelcontextprotocol/server-github"]}}'
+    ```
+  </Tab>
+  
+  <Tab title="Piped input">
+    Pipe JSON from stdin:
+    
+    ```bash
+    cat mcp-config.json | jazz mcp add
+    ```
+  </Tab>
+</Tabs>
+
+### Configuration format
+
+MCP server configurations use this structure:
+
+```json
+{
+  "mcpServers": {
+    "server-name": {
+      "command": "npx",
+      "args": ["-y", "package-name"],
+      "env": {
+        "API_KEY": "your-key"
+      }
+    }
+  }
+}
+```
+
+Or for HTTP servers:
+
+```json
+{
+  "mcpServers": {
+    "server-name": {
+      "transport": "http",
+      "url": "https://api.example.com/mcp",
+      "headers": {
+        "Authorization": "Bearer token"
+      }
+    }
+  }
+}
+```
+
+## jazz mcp list
+
+List all configured MCP servers.
+
+```bash
+jazz mcp list
+jazz mcp ls  # alias
+```
+
+Displays:
+- Server name
+- Command or URL
+- Enabled/disabled status
+- Transport type (stdio or http)
+
+## jazz mcp remove
+
+Remove an MCP server.
+
+```bash
+jazz mcp remove
+jazz mcp rm  # alias
+```
+
+Launches an interactive selector to choose which server to remove.
+
+## jazz mcp enable
+
+Enable a disabled MCP server.
+
+```bash
+jazz mcp enable
+```
+
+Launches an interactive selector to choose which disabled server to enable.
+
+## jazz mcp disable
+
+Disable an enabled MCP server.
+
+```bash
+jazz mcp disable
+```
+
+Launches an interactive selector to choose which enabled server to disable.
+
+<Info>Disabled servers remain configured but won't be loaded or used by agents.</Info>
+
+## Popular MCP servers
+
+<AccordionGroup>
+  <Accordion title="GitHub">
+    Access GitHub repositories, issues, and pull requests.
+    
+    ```json
+    {
+      "mcpServers": {
+        "github": {
+          "command": "npx",
+          "args": ["-y", "@modelcontextprotocol/server-github"],
+          "env": {
+            "GITHUB_PERSONAL_ACCESS_TOKEN": "your-token"
+          }
+        }
+      }
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Notion">
+    Read and write Notion pages and databases.
+    
+    ```json
+    {
+      "mcpServers": {
+        "notion": {
+          "command": "npx",
+          "args": ["-y", "mcp-remote", "https://mcp.notion.com/mcp"]
+        }
+      }
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="PostgreSQL">
+    Query and analyze PostgreSQL databases.
+    
+    ```json
+    {
+      "mcpServers": {
+        "postgres": {
+          "command": "npx",
+          "args": ["-y", "@modelcontextprotocol/server-postgres"],
+          "env": {
+            "POSTGRES_CONNECTION_STRING": "postgresql://user:pass@host:5432/db"
+          }
+        }
+      }
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Filesystem">
+    Advanced filesystem operations.
+    
+    ```json
+    {
+      "mcpServers": {
+        "filesystem": {
+          "command": "npx",
+          "args": ["-y", "@modelcontextprotocol/server-filesystem", "/allowed/path"]
+        }
+      }
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Slack">
+    Send messages and interact with Slack.
+    
+    ```json
+    {
+      "mcpServers": {
+        "slack": {
+          "command": "npx",
+          "args": ["-y", "@modelcontextprotocol/server-slack"],
+          "env": {
+            "SLACK_BOT_TOKEN": "xoxb-your-token"
+          }
+        }
+      }
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Examples
+
+### Add GitHub integration
+
+```bash
+jazz mcp add --file github-mcp.json
+```
+
+With `github-mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_your_token"
+      }
+    }
+  }
+}
+```
+
+### List all MCP servers
+
+```bash
+jazz mcp list
+```
+
+### Disable a server temporarily
+
+```bash
+jazz mcp disable
+# Select: github
+```
+
+### Re-enable a server
+
+```bash
+jazz mcp enable
+# Select: github
+```
+
+## Tips
+
+<Tip>MCP servers are loaded lazily—only when an agent needs them. This keeps startup fast.</Tip>
+
+<Tip>Store API keys in environment variables rather than hardcoding them in configuration files.</Tip>
+
+<Tip>You can disable servers without removing them if you want to temporarily turn off an integration.</Tip>
+
+<Warning>MCP server configurations are stored in `~/.agents/mcp.json` (full config) and `~/.jazz/jazz.config.json` (enabled status).</Warning>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="MCP integration guide" icon="plug" href="/guides/mcp-integration">
+    Learn more about using MCP servers
+  </Card>
+  <Card title="MCP concept" icon="book" href="/concepts/mcp">
+    Understand how MCP works in Jazz
+  </Card>
+</CardGroup>

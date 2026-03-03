@@ -1,0 +1,337 @@
+---
+title: Research and analysis
+description: Use Jazz to research topics, generate reports, analyze competitors, and synthesize information from multiple sources
+---
+
+Jazz can search the web, aggregate information from multiple sources, and generate comprehensive reports. Use Jazz for research tasks, competitive analysis, and knowledge management.
+
+## Research and report generation
+
+Use Jazz to research topics and generate comprehensive reports by aggregating information from multiple sources.
+
+### Example
+
+```bash
+jazz agent chat research-assistant
+```
+
+**Ask:** `"Collect latest guides on TypeScript 5.5 and summarize sources"`
+
+**Jazz will:**
+
+1. Search the web for TypeScript 5.5 guides
+2. Aggregate information from multiple sources
+3. Output a concise report with links and key takeaways
+
+### More examples
+
+<CardGroup cols={2}>
+  <Card title="Best practices" icon="lightbulb">
+    `"Research best practices for React performance optimization"`
+  </Card>
+  <Card title="Security research" icon="shield-halved">
+    `"Find the latest security vulnerabilities in Node.js and summarize"`
+  </Card>
+  <Card title="Tool comparison" icon="code-compare">
+    `"Compare the top 3 project management tools and create a comparison report"`
+  </Card>
+  <Card title="Framework analysis" icon="book">
+    `"Compare React Server Components vs Astro islands architecture with pros and cons"`
+  </Card>
+</CardGroup>
+
+## Competitive analysis
+
+Research competitors and create comprehensive comparison reports.
+
+### Example
+
+**Ask:** `"Research the top 3 project management tools and create a comparison report with recommendations"`
+
+**Jazz will:**
+
+1. Research the specified competitors
+2. Gather pricing information
+3. Compare features and integrations
+4. Analyze user reviews
+5. Create a comprehensive comparison report
+6. Provide recommendations based on your needs
+
+### Example output
+
+```
+You: Research the top 3 project management tools and create a
+     comparison report with recommendations
+
+Agent: [Researching Asana, Monday.com, and Jira]
+
+✓ Gathered pricing information
+✓ Compared features and integrations
+✓ Analyzed user reviews
+✓ Created comparison report
+
+# Project Management Tools Comparison
+
+## Feature Comparison
+
+| Feature | Asana | Monday.com | Jira |
+|---------|-------|------------|------|
+| Task Management | ✓ | ✓ | ✓ |
+| Agile Boards | Limited | ✓ | ✓✓ |
+| Automation | ✓ | ✓✓ | ✓ |
+| Integrations | 200+ | 50+ | 3000+ |
+
+## Recommendation
+
+Monday.com for our cross-functional team:
+- Best automation (saves ~5hrs/week)
+- Intuitive for non-technical users
+- Good Slack/GitHub integration
+
+Saved to: docs/pm-tools-comparison.md
+```
+
+<Tip>
+Jazz can research multiple competitors simultaneously and reports include features, pricing, and user feedback. Recommendations are tailored to your needs.
+</Tip>
+
+## Deep research workflow
+
+Schedule Jazz to conduct deep research on topics and save the results to your knowledge base.
+
+### Example workflow: Tech digest
+
+The `tech-digest` workflow runs daily to compile a comprehensive digest of AI and tech news:
+
+```yaml
+---
+name: tech-digest
+description: Daily comprehensive AI & tech trends digest with deep research
+schedule: "0 8 * * *"
+autoApprove: true
+catchUpOnStartup: true
+skills:
+  - deep-research
+---
+```
+
+### What it researches
+
+**Research scope:**
+
+1. **AI & Machine Learning**
+   - New model releases and benchmarks
+   - Research breakthroughs (Hugging Face Papers, arXiv)
+   - Tool and framework updates
+   - AI safety and policy developments
+
+2. **Tech Industry News**
+   - Major product launches and updates
+   - Company announcements and pivots
+   - Tech layoffs or hiring trends
+   - Regulatory news (EU, US, China)
+
+3. **Startups & Investments**
+   - Funding rounds (Series A, B, C, etc.)
+   - Notable acquisitions
+   - New startup launches
+   - VC trends and insights
+
+4. **Developer & Open Source**
+   - Trending GitHub repositories
+   - New developer tools
+   - Framework updates (React, Next.js, Rust, etc.)
+   - API launches
+
+### Sources
+
+Jazz researches across multiple platforms:
+
+- **Twitter/X**: Tech influencers, AI researchers, VCs
+- **Reddit**: r/MachineLearning, r/artificial, r/technology, r/startups, r/programming
+- **Hugging Face**: Daily Papers, trending models, new spaces
+- **Hacker News**: Top stories from the last 24 hours
+- **TechCrunch**: Funding news, startup coverage
+- **The Verge**: Product news, industry trends
+- **Ars Technica**: Deep tech analysis
+- **Product Hunt**: New launches
+- **GitHub Trending**: Hot repositories
+
+### Report structure
+
+The workflow generates a markdown file with:
+
+- Top Stories (3-5 most significant developments)
+- AI & Machine Learning (new models, research, tools)
+- Funding & Investments (funding rounds, acquisitions)
+- Startups & Products (launches, trending products)
+- Developer News (trending repos, framework updates)
+- Market Trends (analysis of overall tech sentiment)
+- Sources (list of all sources used)
+
+### File storage
+
+Digests are saved to: `~/tech-digests/[YEAR]/[Month]/[DD].md`
+
+For example: `~/tech-digests/2026/February/03.md`
+
+### Schedule the workflow
+
+```bash
+jazz workflow schedule tech-digest
+```
+
+### Example output
+
+```markdown
+# Tech & AI Digest - March 3, 2026
+
+## 🔥 Top Stories
+
+1. **OpenAI releases GPT-5** - Significant improvements in reasoning
+   and code generation. Benchmarks show 40% improvement over GPT-4.
+   [Link]
+
+2. **Anthropic raises $1.5B Series D** - Led by Google Ventures,
+   valuation now at $18B. Focus on constitutional AI research. [Link]
+
+3. **React 19 released** - Server Components now stable, new compiler
+   optimizations, breaking changes in Suspense API. [Link]
+
+## 🤖 AI & Machine Learning
+
+### New Models & Research
+- DeepMind's AlphaCode 3 achieves 85% on Codeforces problems
+- New multimodal model from Stability AI handles video + text
+
+...
+```
+
+<Note>
+The workflow uses the `deep-research` skill to conduct thorough multi-source research. It focuses on signal over noise and includes only truly noteworthy items.
+</Note>
+
+## Knowledge management
+
+Use Jazz to research topics and save them to your personal knowledge base.
+
+### Example
+
+```
+You: Do deep research on the Three-Body Problem and write it in my Obsidian vault
+
+Agent: [Researching the Three-Body Problem]
+
+✓ Researched physics concepts
+✓ Gathered historical context
+✓ Found recent developments
+✓ Analyzed implications
+✓ Created structured note
+
+Saved to: ~/Obsidian/Science/Three-Body-Problem.md
+
+Note includes:
+- Physics fundamentals
+- Historical background
+- Mathematical formulation
+- Chaos theory implications
+- Recent computational approaches
+- Applications in astronomy
+- References and further reading
+```
+
+## PDF analysis
+
+Jazz can read and analyze PDF documents.
+
+### Example
+
+```
+You: Analyze this PDF report and extract the key financial metrics
+
+Agent: [Reading quarterly-report-q4-2025.pdf]
+
+✓ Extracted financial data
+✓ Identified key metrics
+✓ Generated summary
+
+Key Financial Metrics Q4 2025:
+- Revenue: $127.5M (+23% YoY)
+- Net Income: $18.2M (+45% YoY)
+- Operating Margin: 32% (+5pp YoY)
+- Customer Count: 12,450 (+1,200 QoQ)
+- ARR: $480M (+28% YoY)
+- Net Revenue Retention: 118%
+
+Notable trends:
+- Enterprise segment growing 40% YoY
+- International revenue now 35% of total
+- R&D spending increased to 22% of revenue
+
+Save full analysis to file? (yes/no)
+```
+
+## More examples
+
+<CardGroup cols={2}>
+  <Card title="WebAssembly research" icon="magnifying-glass">
+    `"Research the latest developments in WebAssembly and write a 2-page summary"`
+  </Card>
+  <Card title="Architecture comparison" icon="chart-simple">
+    `"Compare React Server Components vs Astro islands architecture with pros and cons"`
+  </Card>
+  <Card title="CI/CD comparison" icon="gears">
+    `"Compare the top 5 CI/CD platforms"`
+  </Card>
+  <Card title="Database analysis" icon="database">
+    `"Research and compare database options for our use case"`
+  </Card>
+</CardGroup>
+
+## Setup
+
+Create an agent with web search capabilities:
+
+```bash
+jazz agent create
+# Name: research-assistant
+# Tools: Web Search, File System
+```
+
+Then start chatting:
+
+```bash
+jazz agent chat research-assistant
+```
+
+<Tip>
+Jazz maintains context throughout the conversation, so you can refine your requests and ask follow-up questions. Reports are saved for future reference.
+</Tip>
+
+## Built-in workflows
+
+Jazz ships with research workflows ready to go:
+
+| Workflow | Schedule | What it does |
+| --- | --- | --- |
+| **tech-digest** | Daily | Scan AI/tech news sources and compile a personalized digest |
+| **market-analysis** | Daily | Stock/crypto analysis with buy/sell signals |
+| **weather-briefing** | Every morning | Weather forecast + outfit recommendations for your location |
+
+List available workflows:
+
+```bash
+jazz workflow list
+```
+
+Run a workflow:
+
+```bash
+jazz workflow run tech-digest
+```
+
+Schedule a workflow:
+
+```bash
+jazz workflow schedule tech-digest
+```

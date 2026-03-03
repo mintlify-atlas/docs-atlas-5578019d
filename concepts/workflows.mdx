@@ -1,0 +1,574 @@
+---
+title: Workflows
+description: Automate agent tasks with scheduled workflows that run headless and unattended.
+---
+
+## What are workflows?
+
+Workflows are scheduled, automated agent tasks. They're Markdown files that describe what an agent should do, when it should run, and how much autonomy it gets.
+
+Think of workflows as cron jobs for AI agents—recurring tasks that run automatically without your intervention.
+
+## Why workflows?
+
+Some tasks should happen regularly without you having to remember:
+
+- **Email cleanup**: Archive newsletters and promotions every hour
+- **News digests**: Compile tech news every morning
+- **Weather briefings**: Get weather + outfit recommendations before you start the day
+- **Market analysis**: Daily stock/crypto analysis with signals
+- **Code reviews**: Automated PR reviews in CI/CD
+- **Standup prep**: Summarize your work each morning
+
+Workflows let you "set it and forget it"—the agent handles it autonomously.
+
+## Built-in workflows
+
+Jazz ships with production-ready workflows:
+
+| Workflow | Schedule | Purpose |
+|----------|----------|----------|
+| **email-cleanup** | Hourly | Archive newsletters, organize promotions, flag important messages |
+| **tech-digest** | Daily 8 AM | Scan AI/tech news sources and compile a personalized digest |
+| **weather-briefing** | Every morning | Weather forecast + outfit recommendations for your location |
+| **market-analysis** | Daily | Stock/crypto analysis with buy/sell signals |
+
+## Workflow structure
+
+Every workflow is a `WORKFLOW.md` file with YAML frontmatter:
+
+```yaml
+---
+name: daily-standup-prep
+description: Prepare my daily standup notes  
+schedule: "0 9 * * 1-5"  # 9 AM, weekdays
+agent: dev-agent
+autoApprove: read-only
+skills:
+  - code-review
+maxIterations: 30
+catchUpOnStartup: true
+---
+```
+
+Followed by the instructions (the prompt):
+
+```markdown
+Check my git activity from yesterday across all repos in ~/projects/.
+
+Summarize:
+- What I worked on
+- What PRs I opened or reviewed
+- Any blockers mentioned in commit messages
+
+Format as bullet points I can paste into Slack.
+```
+
+## Frontmatter options
+
+<AccordionGroup>
+  <Accordion title="name (required)">
+    Unique identifier for the workflow.
+
+    ```yaml
+    name: email-cleanup
+    ```
+  </Accordion>
+
+  <Accordion title="description (required)">
+    Human-readable description of what the workflow does.
+
+    ```yaml
+    description: Clean up newsletters and promotional emails from inbox
+    ```
+  </Accordion>
+
+  <Accordion title="schedule (optional)">
+    Cron expression for when to run. If omitted, workflow is manual-only.
+
+    ```yaml
+    schedule: "0 * * * *"  # Every hour
+    schedule: "0 9 * * 1-5"  # 9 AM weekdays
+    schedule: "0 8 * * *"  # 8 AM daily
+    ```
+
+    See [cron syntax](https://crontab.guru/) for expressions.
+  </Accordion>
+
+  <Accordion title="agent (optional)">
+    Which agent to use. Defaults to `default`.
+
+    ```yaml
+    agent: research-agent
+    ```
+  </Accordion>
+
+  <Accordion title="autoApprove (optional)">
+    Auto-approval policy for unattended execution:
+
+    - `false` - Always ask (workflow will pause)
+    - `read-only` - Auto-approve reading files, searching, web requests
+    - `low-risk` - Also auto-approve archiving email, creating calendar events
+    - `high-risk` - Also auto-approve file changes, shell commands, git push
+    - `true` - Auto-approve everything
+
+    ```yaml
+    autoApprove: read-only
+    ```
+
+    See [Auto-approval](/core/approval) for details.
+  </Accordion>
+
+  <Accordion title="skills (optional)">
+    Skills to preload for this workflow.
+
+    ```yaml
+    skills:
+      - deep-research
+      - email
+    ```
+  </Accordion>
+
+  <Accordion title="maxIterations (optional)">
+    Maximum agent iterations. Defaults to 50.
+
+    ```yaml
+    maxIterations: 100
+    ```
+  </Accordion>
+
+  <Accordion title="catchUpOnStartup (optional)">
+    Whether to run missed workflows when Jazz starts. Defaults to `false`.
+
+    ```yaml
+    catchUpOnStartup: true
+    ```
+  </Accordion>
+
+  <Accordion title="maxCatchUpAge (optional)">
+    Max age (seconds) for catch-up runs. Defaults to 86400 (24 hours).
+
+    ```yaml
+    maxCatchUpAge: 3600  # 1 hour
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Creating workflows
+
+### Manual creation
+
+Create a directory and `WORKFLOW.md` file:
+
+```bash
+# Global (all projects)
+mkdir -p ~/.jazz/workflows/my-workflow
+cd ~/.jazz/workflows/my-workflow
+touch WORKFLOW.md
+
+# Local (this project only)
+mkdir -p ./workflows/my-workflow
+cd ./workflows/my-workflow
+touch WORKFLOW.md
+```
+
+Edit `WORKFLOW.md` with frontmatter and instructions.
+
+### Using the create-workflow skill
+
+```bash
+jazz
+> Use the create-workflow skill to help me build a workflow for daily email summaries
+```
+
+The skill will guide you through designing the workflow.
+
+## Running workflows
+
+### List workflows
+
+```bash
+jazz workflow list
+```
+
+Shows all workflows from all sources (built-in, global, local).
+
+### Run manually
+
+```bash
+jazz workflow run email-cleanup
+```
+
+Runs the workflow immediately, regardless of schedule.
+
+### Schedule
+
+```bash
+jazz workflow schedule email-cleanup
+```
+
+This:
+1. Registers the workflow with your system scheduler (cron on Linux, launchd on macOS)
+2. Creates a scheduled job using the `schedule` from frontmatter
+3. The workflow runs automatically at the specified times
+
+<Info>
+Scheduled workflows run even when your terminal is closed. They're managed by the system scheduler.
+</Info>
+
+### Unschedule
+
+```bash
+jazz workflow unschedule email-cleanup
+```
+
+Removes the scheduled job. You can still run manually.
+
+## Example workflows
+
+### Email cleanup (hourly)
+
+From `workflows/email-cleanup/WORKFLOW.md`:
+
+```yaml
+---
+name: email-cleanup
+description: Clean up newsletters and promotional emails from your inbox
+schedule: "0 * * * *"
+autoApprove: low-risk
+skills:
+  - email
+---
+
+# Email Cleanup Workflow
+
+Review my inbox from the last hour and help me clean up low-value emails.
+
+## What to Clean
+
+1. **Newsletters I haven't read**: If there's a newsletter email unread for more than 2 weeks, archive it.
+2. **Promotional emails**: Archive any promotional/marketing emails older than 3 days.
+3. **Automated notifications**: Archive GitHub notifications, CI/CD notifications I've already seen.
+4. **Duplicate emails**: Keep only the most recent from same sender about same topic.
+
+## What NOT to Touch
+
+- Personal emails from real people
+- Work-related emails with action items
+- Receipts or invoices
+- Emails marked as important
+- **ANY email you're uncertain about** - when in doubt, leave it alone
+
+## Safety Rules
+
+When in doubt, DO NOTHING.
+```
+
+### Tech digest (daily)
+
+From `workflows/tech-digest/WORKFLOW.md`:
+
+```yaml
+---
+name: tech-digest
+description: Daily comprehensive AI & tech trends digest with deep research
+schedule: "0 8 * * *"
+autoApprove: true
+catchUpOnStartup: true
+skills:
+  - deep-research
+---
+
+# Daily Tech & AI Digest
+
+Generate a comprehensive daily digest of the most important developments in AI, technology, startups, and tech investments from the last 24 hours.
+
+## Research Scope
+
+### 1. AI & Machine Learning
+- New model releases and benchmarks
+- Research breakthroughs (check Hugging Face Papers, arXiv)
+- Tool and framework updates
+- AI safety and policy developments
+
+### 2. Tech Industry News
+- Major product launches and updates
+- Company announcements and pivots
+- Tech layoffs or hiring trends
+- Regulatory news (EU, US, China)
+
+### 3. Startups & Investments
+- Funding rounds (Series A, B, C, etc.)
+- Notable acquisitions
+- New startup launches
+- VC trends and insights
+
+...
+
+## File Storage
+
+Save the digest to: `$HOME/tech-digests/[YEAR]/[Month]/[DD].md`
+```
+
+This workflow:
+- Runs at 8 AM daily
+- Uses the `deep-research` skill for multi-source research
+- Auto-approves all actions (safe for read-only research)
+- Catches up on startup if the system was off at 8 AM
+- Saves results to organized markdown files
+
+## Workflow discovery
+
+Workflows are discovered from multiple sources with priority:
+
+1. **Local** (highest): `./workflows/` in your project
+2. **Global**: `~/.jazz/workflows/`
+3. **Built-in** (lowest): Shipped with Jazz
+
+If multiple sources have a workflow with the same name, the higher-priority one wins.
+
+<Tip>
+Local workflows let you customize built-in workflows per-project.
+</Tip>
+
+## Catch-up mechanism
+
+If your machine was asleep when a workflow was scheduled:
+
+```typescript
+// From workflow-service.ts:33-34
+catchUpOnStartup?: boolean;  // Run missed workflows when Jazz starts
+maxCatchUpAge?: number;      // Max age (seconds) for catch-up runs
+```
+
+Example:
+
+```yaml
+---
+name: morning-briefing
+schedule: "0 7 * * *"  # 7 AM daily
+catchUpOnStartup: true
+maxCatchUpAge: 7200  # Only catch up if less than 2 hours late
+---
+```
+
+If you start Jazz at 8:30 AM:
+- The 7 AM run was missed
+- Less than 2 hours old → runs automatically
+- More than 2 hours old → skips (too stale)
+
+## Auto-approval policies
+
+Workflows run unattended, so auto-approval is critical:
+
+### Policy levels
+
+| Policy | What's auto-approved |
+|--------|---------------------|
+| `false` | Nothing—always asks (workflow pauses) |
+| `read-only` | Reading files, searching, web requests |
+| `low-risk` | + Archiving email, creating calendar events |
+| `high-risk` | + File changes, shell commands, git push |
+| `true` | Everything |
+
+### Policy selection guide
+
+**Research workflows**: `true` or `read-only`
+```yaml
+autoApprove: true  # Safe: only reads and searches
+```
+
+**Email/calendar workflows**: `low-risk`
+```yaml
+autoApprove: low-risk  # Safe: can archive emails, create events
+```
+
+**Code workflows**: `read-only` or manual approval
+```yaml
+autoApprove: read-only  # Safe: can analyze code but not modify
+```
+
+**Deploy workflows**: `high-risk` or manual approval
+```yaml
+autoApprove: false  # Requires explicit approval for git push
+```
+
+<Warning>
+Use `high-risk` or `true` carefully. These allow file modifications and shell commands without confirmation.
+</Warning>
+
+## Workflow service API
+
+For programmatic access:
+
+```typescript
+import { WorkflowServiceTag } from "@/core/workflows/workflow-service";
+
+// List all workflows
+const workflows = yield* WorkflowServiceTag.pipe(
+  Effect.flatMap((service) => service.listWorkflows())
+);
+
+// Load a workflow
+const workflow = yield* WorkflowServiceTag.pipe(
+  Effect.flatMap((service) => service.loadWorkflow("email-cleanup"))
+);
+// Returns: { metadata, prompt: "Review my inbox..." }
+
+// Get metadata only
+const metadata = yield* WorkflowServiceTag.pipe(
+  Effect.flatMap((service) => service.getWorkflow("email-cleanup"))
+);
+
+// Refresh cache (rescan directories)
+const refresh = yield* WorkflowServiceTag.pipe(
+  Effect.flatMap((service) => service.refreshCache())
+);
+```
+
+## CI/CD integration
+
+Run workflows in your CI/CD pipelines:
+
+```yaml
+# .github/workflows/review.yml
+name: AI Code Review
+on: pull_request
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - run: npm install -g jazz-ai
+
+      - name: Run code review workflow
+        run: jazz --output raw workflow run code-review --auto-approve
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+```
+
+Key flags:
+- `--output raw`: Disables interactive UI (suitable for CI)
+- `--auto-approve`: Runs without prompts (uses workflow's autoApprove policy)
+
+See [CI/CD Guide](/guides/ci-cd) for complete examples.
+
+## Best practices
+
+### Start conservative
+
+Begin with `read-only` approval:
+
+```yaml
+autoApprove: read-only
+```
+
+Run manually a few times to verify behavior, then increase autonomy if appropriate.
+
+### Clear instructions
+
+Be specific about what the agent should do:
+
+```markdown
+❌ Check my email
+✅ Archive unread newsletters older than 2 weeks and promotional emails older than 3 days
+
+❌ Look at my code
+✅ Review the last commit for security issues, focusing on input validation and SQL queries
+```
+
+### Safety guards
+
+Add explicit safety rules:
+
+```markdown
+## Safety Rules
+
+When in doubt, DO NOTHING.
+
+- Only archive emails when highly confident they match criteria
+- If an email could be important, skip it
+- Better to leave 10 safe-to-archive emails than archive 1 important one
+```
+
+### Iteration limits
+
+Set appropriate limits:
+
+```yaml
+maxIterations: 30  # Simple tasks
+maxIterations: 100  # Complex research
+```
+
+### Test locally
+
+Always test workflows manually first:
+
+```bash
+jazz workflow run my-workflow
+```
+
+Verify output and behavior before scheduling.
+
+### Use skills
+
+Preload relevant skills for consistency:
+
+```yaml
+skills:
+  - deep-research  # For research workflows
+  - email          # For email workflows
+  - code-review    # For review workflows
+```
+
+## Troubleshooting
+
+### Workflow doesn't run
+
+1. **Check schedule syntax**: Use [crontab.guru](https://crontab.guru/) to verify
+2. **Verify scheduling**: `jazz workflow list` should show "Scheduled: Yes"
+3. **Check system scheduler**: 
+   - Linux: `crontab -l`
+   - macOS: `launchctl list | grep jazz`
+
+### Workflow pauses
+
+If a workflow stops and waits:
+- It needs approval for a tool
+- Increase `autoApprove` level or add specific tools to allow-list
+- Review workflow instructions—they might request unsafe operations
+
+### Workflow fails
+
+1. **Check logs**: Workflow output is logged
+2. **Run manually**: `jazz workflow run <name>` to see errors interactively
+3. **Verify agent**: Ensure the specified agent exists
+4. **Check iteration limit**: Increase `maxIterations` if needed
+
+### Missed runs
+
+If workflows don't catch up:
+- Check `catchUpOnStartup: true` in frontmatter
+- Check `maxCatchUpAge` isn't too restrictive
+- Verify system time is correct
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Agents" icon="robot" href="/concepts/agents">
+    Configure agents for workflow execution
+  </Card>
+  <Card title="Skills" icon="puzzle-piece" href="/concepts/skills">
+    Add expertise to your workflows
+  </Card>
+  <Card title="Auto-approval" icon="shield-check" href="/core/approval">
+    Fine-tune workflow autonomy
+  </Card>
+  <Card title="CI/CD Guide" icon="gears" href="/guides/ci-cd">
+    Run workflows in automation pipelines
+  </Card>
+</CardGroup>

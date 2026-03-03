@@ -1,0 +1,375 @@
+---
+title: In-chat commands
+description: Control your chat session with slash commands
+---
+
+When you're chatting with an agent, you can use special slash commands to control your session, view information, and configure your agent. All commands start with `/` and can be typed at any point during your conversation.
+
+## Quick reference
+
+Type `/help` during any chat session to see the full list of available commands.
+
+## Session management
+
+### /new
+
+Start a new conversation and clear the context.
+
+```bash
+/new
+```
+
+This command:
+- Generates a new conversation ID
+- Clears all conversation history
+- Keeps the system prompt and agent configuration
+- Resets token usage tracking
+
+Use this when you want a fresh start with the same agent without carrying over previous context.
+
+### /fork
+
+Fork the conversation into a new branch from the last message.
+
+```bash
+/fork
+```
+
+This command:
+- Creates a new conversation ID
+- Keeps only the system prompt and last user message
+- Clears all intermediate conversation history
+- Allows you to explore a different approach to your most recent question
+
+Use this when you want to try a different approach to your last question without losing your main conversation.
+
+### /clear
+
+Clear the terminal screen.
+
+```bash
+/clear
+```
+
+This command clears the terminal display but preserves your conversation history in memory.
+
+### /exit
+
+Exit the chat session.
+
+```bash
+/exit
+```
+
+You can also use `Ctrl+C` to exit.
+
+## Agent management
+
+### /agents
+
+List all available agents.
+
+```bash
+/agents
+```
+
+Displays:
+- Agent name and ID
+- Description (if configured)
+- Model and provider
+- Reasoning effort level
+- Current agent indicator
+
+### /switch
+
+Switch to a different agent in the same conversation.
+
+```bash
+/switch <agent-name-or-id>
+```
+
+You can also run `/switch` without arguments to see an interactive agent picker.
+
+Examples:
+```bash
+/switch coder
+/switch code-reviewer
+/switch 123e4567-e89b-12d3-a456-426614174000
+```
+
+When you switch agents:
+- Conversation history is preserved
+- The new agent can see all previous messages
+- Tool availability changes based on the new agent's configuration
+
+## Configuration
+
+### /model
+
+Show or change the model and reasoning effort.
+
+```bash
+# Show current model
+/model
+
+# Change model
+/model <provider>/<model>
+
+# Change reasoning effort
+/model reasoning <level>
+```
+
+Examples:
+```bash
+/model openai/gpt-4o
+/model anthropic/claude-3-5-sonnet-20241022
+/model reasoning high
+/model reasoning disable
+```
+
+Reasoning levels:
+- `low` - Faster responses, less thorough
+- `medium` - Balanced speed and quality
+- `high` - Slower responses, more thorough
+- `disable` - No extended reasoning
+
+### /config
+
+Show or modify agent configuration.
+
+```bash
+# Show full configuration
+/config
+
+# Configure tools interactively
+/config tools
+```
+
+The `/config tools` subcommand opens an interactive checkbox interface where you can enable or disable tools for the current agent.
+
+### /mode
+
+Switch between tool approval modes.
+
+```bash
+# Interactive mode selector
+/mode
+
+# Switch to safe mode (require approval for every tool)
+/mode safe
+
+# Switch to yolo mode (auto-approve all tools)
+/mode yolo
+
+# Auto-approve specific command prefix
+/mode allow <command-prefix>
+
+# Remove auto-approval for command prefix
+/mode disallow <command-prefix>
+```
+
+Examples:
+```bash
+/mode safe
+/mode yolo
+/mode allow git status
+/mode allow npm test
+/mode disallow git push
+```
+
+Approval modes:
+- **safe** - Require approval for every tool call (default)
+- **yolo** - Auto-approve all tool calls
+
+You can also selectively auto-approve specific command prefixes while staying in safe mode. Commands added with `/mode allow` persist only for the current session.
+
+## Information and monitoring
+
+### /tools
+
+List all tools available to the current agent, organized by category.
+
+```bash
+/tools
+```
+
+Displays:
+- Tools grouped by category (File System, Git, Web, etc.)
+- Total tool count
+- Web search provider (if configured)
+
+### /skills
+
+List all available skills.
+
+```bash
+/skills
+```
+
+Displays skills from:
+- **Built-in** - Skills shipped with Jazz
+- **Global** - Skills in `~/.jazz/skills/`
+- **Agents** - Skills in `~/.agents/skills/`
+- **Local** - Skills in `./skills/`
+
+Skills are packaged expertise that agents can load on demand for specialized tasks.
+
+### /workflows
+
+List available workflows.
+
+```bash
+/workflows
+```
+
+Displays:
+- Workflow name and description
+- Schedule (if configured)
+- Assigned agent (if configured)
+- Workflows grouped by source (local, global, built-in)
+
+You can also ask the agent to create a workflow by typing `/workflows create`.
+
+### /context
+
+Show context window usage and token breakdown.
+
+```bash
+/context
+```
+
+Displays:
+- Visual grid showing context usage
+- Model and provider
+- Total tokens used vs. available
+- Breakdown by category:
+  - System prompt
+  - System tools
+  - Skills
+  - Messages
+  - Free space
+  - Autocompact buffer (16.5% reserved)
+
+<Note>
+Token estimates are approximate and based on the 4-character-per-token heuristic. Actual token counts may vary by model.
+</Note>
+
+### /cost
+
+Show token usage and estimated cost for the current conversation.
+
+```bash
+/cost
+```
+
+Displays:
+- Input tokens used
+- Output tokens used
+- Total tokens
+- Pricing per million tokens (from models.dev)
+- Estimated cost breakdown (input, output, total)
+
+The cost is calculated based on the accumulated token usage since the conversation started (or since the last `/new` command).
+
+### /stats
+
+Show session statistics and usage summary.
+
+```bash
+/stats
+```
+
+Displays:
+- Current agent name and ID
+- Model and provider
+- Reasoning effort level
+- Tool count
+- Working directory
+- Session duration
+- Message count
+- Token usage (input, output, total)
+- Estimated cost
+
+### /mcp
+
+Show MCP server status and connections.
+
+```bash
+/mcp
+```
+
+Displays for each configured MCP server:
+- Connection status (connected/disconnected)
+- Enabled/disabled state
+- Transport type (stdio/http)
+- Command or URL
+
+MCP servers are configured in `~/.agents/mcp.json`.
+
+## Context optimization
+
+### /compact
+
+Summarize conversation history to save tokens.
+
+```bash
+/compact
+```
+
+This command:
+- Requires at least 5 messages in history
+- Keeps the system prompt
+- Summarizes all other messages into a single high-density summary
+- Preserves key information while reducing token usage
+- Uses the agent's LLM to generate the summary
+
+The compaction process:
+1. Reads all messages from conversation history
+2. Analyzes content and extracts key information
+3. Generates a high-density summary
+4. Replaces history with system prompt + summary
+
+Use this when you're running low on context space but want to continue the conversation.
+
+<Note>
+Jazz automatically compacts context when usage reaches the autocompact buffer threshold (83.5% of context window).
+</Note>
+
+## Utilities
+
+### /copy
+
+Copy the last agent response to clipboard.
+
+```bash
+/copy
+```
+
+Requires `pbcopy` (macOS) or equivalent clipboard tool.
+
+### /help
+
+Show available commands with descriptions.
+
+```bash
+/help
+```
+
+Displays a quick reference of all slash commands.
+
+## Command conventions
+
+- All commands start with `/`
+- Commands are case-insensitive (`/NEW` works the same as `/new`)
+- Arguments are space-separated
+- Multi-word arguments are joined (e.g., `/switch my agent name`)
+- Unknown commands show an error and suggest `/help`
+
+## Tips
+
+- Use `/context` to monitor token usage before running expensive operations
+- Use `/compact` when approaching context limits to continue long conversations
+- Use `/fork` to explore alternative approaches without losing your main conversation
+- Use `/mode allow <prefix>` to auto-approve repetitive safe commands
+- Use `/stats` to track session duration and costs
+- Use `/switch` to change agents mid-conversation while preserving context

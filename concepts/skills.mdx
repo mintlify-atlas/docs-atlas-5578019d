@@ -1,0 +1,552 @@
+---
+title: Skills
+description: Extend your agents with packaged expertise for complex tasks like deep research, code review, and documentation.
+---
+
+## What are skills?
+
+Skills are packaged expertise that agents can load on-demand. Instead of figuring out complex tasks from scratch every time, agents can load proven playbooks with domain-specific instructions, workflows, and best practices.
+
+Think of skills as expert consultants your agent can call upon when needed.
+
+## Why skills matter
+
+Without skills, agents would need to:
+- Invent research methodologies from scratch
+- Guess at code review best practices  
+- Reconstruct structured workflows every time
+- Waste tokens on trial and error
+
+With skills, agents get:
+- **Proven workflows**: Battle-tested approaches for complex tasks
+- **Domain expertise**: Specialized knowledge and techniques
+- **Consistency**: Same high-quality output every time
+- **Efficiency**: No need to re-discover best practices
+
+<Info>
+Skills follow the [.agents convention](https://agentskills.io)—a community standard for sharing agent expertise.
+</Info>
+
+## Built-in skills
+
+Jazz ships with 20+ professional skills:
+
+### Research & analysis
+
+- **deep-research**: Multi-source research with verification and citations
+- **digest**: Create curated news digests from multiple sources
+- **defuddle**: Clarify confusing concepts or documentation
+
+### Development
+
+- **code-review**: Structured code review with security and quality checks
+- **commit-message**: Generate semantic commit messages from git diffs
+- **pr-description**: Create comprehensive PR descriptions from branch diffs
+- **documentation**: Write technical documentation with examples
+
+### Writing & organization
+
+- **journal**: Daily journaling with prompts and reflection
+- **meeting-notes**: Structure meeting notes with action items
+- **decision-log**: Document important decisions and rationale
+- **obsidian**: Work with Obsidian vault structure and linking
+
+### Productivity
+
+- **email**: Smart email management and drafting
+- **calendar**: Calendar event management and scheduling
+- **budget**: Personal budgeting and expense tracking
+- **todo**: Task management and prioritization
+
+### Creative
+
+- **startup-brainstorm**: Ideation and validation for startup ideas
+- **persona**: Create detailed agent personas
+- **create-workflow**: Design and structure new workflows
+
+### Meta-skills
+
+- **skill-creator**: Design and build new skills
+- **browser-use**: Automated browser interaction (requires Playwright)
+
+## How skills work
+
+### Progressive disclosure
+
+Skills use a three-level loading system to minimize token usage:
+
+```typescript
+// Level 1: List all skills (metadata only)
+const skills = yield* skillService.listSkills();
+// Returns: [{ name: "deep-research", description: "...", path: "..." }]
+
+// Level 2: Load core skill content (when skill is invoked)
+const skill = yield* skillService.loadSkill("deep-research");
+// Returns: { metadata, core: "# Deep Research\n...", sections: Map }
+
+// Level 3: Load specific sections (on-demand)
+const section = yield* skillService.loadSkillSection(
+  "deep-research",
+  "references/verification-patterns.md"
+);
+```
+
+This approach:
+- Shows agents what skills exist (Level 1) 
+- Loads full instructions only when needed (Level 2)
+- Fetches supplementary content on-demand (Level 3)
+
+### Skill discovery
+
+Skills are discovered from multiple sources with priority:
+
+1. **Local** (highest priority): `./skills/` in your project
+2. **Agents convention**: `~/.agents/skills/`
+3. **Global**: `~/.jazz/skills/`
+4. **Built-in** (lowest priority): Shipped with Jazz
+
+If multiple sources have a skill with the same name, the higher-priority one wins.
+
+<Tip>
+Local skills let you customize built-in skills per-project without affecting the global installation.
+</Tip>
+
+### Skill structure
+
+Every skill has a `SKILL.md` file with frontmatter:
+
+```markdown
+---
+name: deep-research
+description: Conduct comprehensive multi-source research for complex questions. Use when the user asks a complicated question requiring multiple sources, in-depth analysis, cross-referencing, or expert-level research reports.
+---
+
+# Deep Research
+
+Autonomous research agent for complex, multi-source questions...
+
+## When to Activate
+
+- Complex questions requiring multiple sources
+- Topics with conflicting or nuanced information
+...
+```
+
+The frontmatter tells agents:
+- **name**: How to reference the skill
+- **description**: When to use it (triggers and use cases)
+
+The markdown body contains the actual instructions.
+
+## Using skills
+
+### In chat
+
+Agents see all available skills and can load them autonomously:
+
+```bash
+jazz
+> Research the impact of AI on healthcare costs in the next decade
+
+# Agent sees "deep-research" skill in its context
+# Decides it matches the task
+# Loads the skill and follows its methodology
+```
+
+You can also explicitly request a skill:
+
+```bash
+> Use the code-review skill to review the last commit
+```
+
+### List available skills
+
+```bash
+jazz /skills
+```
+
+This shows all skills from all sources, their descriptions, and locations.
+
+### In workflows
+
+Workflows can preload specific skills:
+
+```yaml
+---
+name: tech-digest
+schedule: "0 8 * * *"
+skills:
+  - deep-research
+  - digest
+---
+
+Create a daily digest of AI and tech news from the last 24 hours.
+```
+
+Preloaded skills are immediately available in the agent's context.
+
+## Skill anatomy: deep-research example
+
+Let's examine the `deep-research` skill to understand how skills provide structure:
+
+### Five-phase pipeline
+
+From `skills/deep-research/SKILL.md:32-41`:
+
+```markdown
+## Research Pipeline
+
+Execute these phases sequentially. Each phase builds on the previous.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  1. DECOMPOSE → 2. PLAN → 3. SEARCH → 4. VERIFY → 5. SYNTHESIZE │
+│       ↑                                    │                    │
+│       └────────── ITERATE IF GAPS ─────────┘                    │
+└─────────────────────────────────────────────────────────────────┘
+```
+```
+
+Each phase has detailed instructions:
+
+**Phase 1: Query Decomposition**
+- Break complex questions into atomic sub-questions
+- Identify dependencies between questions
+- Generate multiple search query variants
+
+**Phase 2: Research Planning**
+- Create structured research plan
+- Define source requirements
+- Set confidence targets
+
+**Phase 3: Parallel Search Execution**
+- Batch independent queries
+- Diverse source strategy
+- Track sources with metadata
+
+**Phase 4: Iterative Verification Loop**
+- Verify claims with multiple sources
+- Check for contradictions
+- Iterate until confidence target met
+
+**Phase 5: Synthesis & Report Generation**
+- Lead with conclusions
+- Cite every factual claim
+- Acknowledge uncertainty
+- List all sources
+
+### Quality checklist
+
+From `skills/deep-research/SKILL.md:312-323`:
+
+```markdown
+## Quality Checklist
+
+Before delivering final report:
+
+- [ ] All sub-questions addressed
+- [ ] Every claim has citation
+- [ ] Contradictions acknowledged
+- [ ] Confidence levels stated
+- [ ] Limitations documented
+- [ ] Sources are diverse and credible
+- [ ] Recency appropriate for topic
+- [ ] Sources used are shown
+```
+
+This ensures consistent high-quality output.
+
+### Anti-patterns
+
+Skills teach agents what NOT to do:
+
+```markdown
+## Anti-Patterns to Avoid
+
+- ❌ Single-source conclusions for complex topics
+- ❌ Ignoring contradictory evidence
+- ❌ Treating all sources as equally credible
+- ❌ Stopping after first search round without verification
+- ❌ Presenting uncertain claims as facts
+```
+
+## Skill anatomy: code-review example
+
+The `code-review` skill demonstrates workflow-based expertise:
+
+### Structured workflow
+
+From `skills/code-review/SKILL.md:16-29`:
+
+```markdown
+## Workflow
+
+1. **Understand context**: What is the change for?
+2. **Read the diff**: What actually changed?
+3. **Collect all issues—never stop at first error**
+4. **Gather usage context**: 
+   - Surrounding code
+   - Call sites & usage
+   - Integration points
+   - Tests
+5. **Run checklist**: Logic, security, performance, style, tests
+6. **Prioritize**: Critical → must fix; Suggestion → consider
+7. **Respond**: Summary + categorized comments + what was done well
+```
+
+### Detailed checklists
+
+```markdown
+### Correctness & Logic
+- [ ] Does it do what it claims? Edge cases?
+- [ ] Off-by-one, null/undefined, empty inputs?
+- [ ] Error handling: failures caught and handled?
+- [ ] Concurrency: races, deadlocks, shared state?
+
+### Security
+- [ ] User input validated and sanitized?
+- [ ] No secrets in code or logs?
+- [ ] Auth/authz checked where needed?
+```
+
+### Output format
+
+Skills can specify exact output formats:
+
+```markdown
+## Code Review: [PR/File name]
+
+### Summary
+[Overall assessment]
+
+### Well done
+- [Specific things done well]
+
+### Critical (must address)
+- **[Location]** [Issue]. [Fix suggestion.]
+
+### Suggestions (consider)
+- **[Location]** [Optional improvement.]
+```
+
+## Installing skills
+
+### From the .agents ecosystem
+
+```bash
+npx skills add
+```
+
+Browse and install skills from the community ecosystem.
+
+### Manual installation
+
+**Global** (available to all agents):
+
+```bash
+mkdir -p ~/.jazz/skills/my-skill
+cd ~/.jazz/skills/my-skill
+# Create SKILL.md
+```
+
+**Project-local** (only for this project):
+
+```bash
+mkdir -p ./skills/my-skill
+cd ./skills/my-skill  
+# Create SKILL.md
+```
+
+**Agents convention** (shared across tools):
+
+```bash
+mkdir -p ~/.agents/skills/my-skill
+cd ~/.agents/skills/my-skill
+# Create SKILL.md
+```
+
+## Creating custom skills
+
+### Basic skill structure
+
+```markdown
+---
+name: my-skill
+description: When to use this skill and what it does
+---
+
+# Skill Name
+
+One-sentence purpose.
+
+## When to Activate
+
+- Trigger condition 1
+- Trigger condition 2
+
+## Workflow
+
+1. Step 1
+2. Step 2
+3. Step 3
+
+## Output Format
+
+[Specify exact format]
+
+## Quality Checklist
+
+- [ ] Requirement 1
+- [ ] Requirement 2
+```
+
+### Advanced features
+
+**Multiple files**: Add supplementary content
+
+```
+my-skill/
+  SKILL.md              # Core instructions
+  references/
+    examples.md         # Code examples
+    templates.md        # Output templates
+  workflows/
+    advanced.md         # Advanced workflows
+```
+
+Load sections on-demand:
+
+```markdown
+For advanced usage, see [workflows/advanced.md]
+```
+
+**Nested skills**: Skills can reference other skills
+
+```markdown
+For deep analysis, load the `deep-research` skill.
+```
+
+### Use the skill-creator skill
+
+The `skill-creator` skill helps you design new skills:
+
+```bash
+jazz
+> Use the skill-creator skill to help me build a skill for API documentation
+```
+
+## Best practices
+
+### Clear triggers
+
+Make it obvious when to use the skill:
+
+```markdown
+description: Use when the user asks to "research", "investigate", "deep dive", or requests comprehensive analysis with multiple sources.
+```
+
+### Structured workflows
+
+Break complex tasks into clear phases:
+
+```markdown
+## Phase 1: Decomposition
+[Clear instructions]
+
+## Phase 2: Execution
+[Clear instructions]
+
+## Phase 3: Verification
+[Clear instructions]
+```
+
+### Output specifications
+
+Define exact output format:
+
+```markdown
+## Report Structure
+
+```markdown
+# Title
+
+## Executive Summary
+[2-3 sentences]
+
+## Key Findings
+[Findings with citations]
+
+## Sources
+[Complete source list]
+```
+```
+
+### Quality checklists
+
+Provide verification checklists:
+
+```markdown
+Before delivering:
+
+- [ ] All requirements met
+- [ ] Format matches specification
+- [ ] Sources cited
+```
+
+### Anti-patterns
+
+Teach what NOT to do:
+
+```markdown
+## Anti-Patterns to Avoid
+
+- ❌ Stopping after first attempt
+- ❌ Skipping verification
+- ❌ Omitting sources
+```
+
+## Skill service API
+
+For programmatic access:
+
+```typescript
+import { SkillServiceTag } from "@/core/skills/skill-service";
+
+// List all skills
+const skills = yield* SkillServiceTag.pipe(
+  Effect.flatMap((service) => service.listSkills())
+);
+
+// Load a skill
+const skill = yield* SkillServiceTag.pipe(
+  Effect.flatMap((service) => service.loadSkill("deep-research"))
+);
+
+// Load a section
+const section = yield* SkillServiceTag.pipe(
+  Effect.flatMap((service) => 
+    service.loadSkillSection("deep-research", "references/examples.md")
+  )
+);
+```
+
+<Info>
+Skills are cached in memory after first load for performance.
+</Info>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Workflows" icon="repeat" href="/concepts/workflows">
+    Combine agents and skills in automated workflows
+  </Card>
+  <Card title="Agents" icon="robot" href="/concepts/agents">
+    Configure agents to use specific skills
+  </Card>
+  <Card title="Examples" icon="code" href="/examples/skills">
+    Explore example skills and use cases
+  </Card>
+  <Card title=".agents Convention" icon="book" href="https://agentskills.io">
+    Learn about the broader skills ecosystem
+  </Card>
+</CardGroup>
